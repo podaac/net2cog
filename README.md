@@ -1,2 +1,3 @@
-# net2cog
-Harmony service for transforming netCDF file to cloud optimized geotiffs
+# Netcdf Converter
+
+Conversion service for netcdf4 files to cloud optimized geotiff

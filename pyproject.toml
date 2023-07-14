@@ -1,0 +1,47 @@
+[tool.poetry]
+name = "net2cog"
+version = "0.2.0-alpha.15"
+description = "NetCDF Converter Service"
+authors = ["podaac-cloud-dsa <podaac-cloud-dsa@jpl.nasa.gov>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://git.earthdata.nasa.gov/projects/POCUMULUS/repos/service-netcdf-converter/browse"
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+exclude = ['contrib', 'docs', 'tests']
+packages = [
+    { include = "podaac" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+boto3 = "^1.28.3"
+requests = "^2.31.0"
+netcdf4 = "^1.6.4"
+xarray = "^2023.6.0"
+rio-cogeo = "^4.0.1"
+rasterio = "^1.3.8"
+rioxarray = "^0.14.1"
+numpy = "^1.25.1"
+harmony-service-lib = "^1.0.22"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+flake8 = "^6.0.0"
+pytest-cov = "^4.1.0"
+pylint = "^2.17.4"
+sphinx = "^7.0.1"
+
+[tool.poetry.extras]
+podaac = ["podaac-baseworker"]
+harmony = ["harmony-service-lib"]
+
+[tool.poetry.scripts]
+run_worker = 'podaac.netcdf_converter.netcdf_convert_worker:main'
+netcdf_harmony = 'podaac.netcdf_converter.netcdf_convert_harmony:main'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+

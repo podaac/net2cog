@@ -1,0 +1,37 @@
+{
+  "$schema": "../../harmony/app/schemas/data-operation/0.8.0/data-operation-v0.8.0.json",
+  "version": "0.8.0",
+  "callback": "http://localhost/some-path",
+  "stagingLocation": "s3://example-bucket/public/some-org/some-service/some-uuid/",
+  "user": "jdoe",
+  "isSynchronous": false,
+  "client": "harmony-example",
+  "requestId": "0001111-2222-3333-4444-5555666677777",
+  "sources": [
+    {
+      "collection": "C0001-EXAMPLE",
+      "variables": [
+        {
+          "id": "V0001-EXAMPLE",
+          "name": "ExampleVar",
+          "fullPath": "example/group/path/ExampleVar"
+        }
+      ],
+      "granules": [
+        {
+          "id": "RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0",
+          "name": "Example2",
+          "url": "file:///home/tests/data/RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc"
+        }
+      ]
+    }
+  ],
+  "format": {
+    "crs": "CRS:84",
+    "isTransparent": true,
+    "mime": "image/tiff",
+    "width": 800,
+    "height": 600,
+    "dpi": 72
+  }
+}

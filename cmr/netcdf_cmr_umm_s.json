@@ -1,0 +1,45 @@
+{
+  "Name": "PODAAC NetCDF Reformatter",
+  "LongName": "PODAAC NetCDF Reformatter",
+  "Type": "WEB SERVICES",
+  "Version": "0.1",
+  "Description": "Endpoint for converting NetCDF files to COG via harmony/harp",
+  "AccessConstraints": "None",
+  "UseConstraints": {},
+  "URL": {
+      "Description": "PROJECT HOME PAGE",
+      "URLValue": "https://podaac.jpl.nasa.gov/"
+  },
+  "ServiceKeywords": [
+    {
+      "ServiceCategory": "EARTH SCIENCE SERVICES",
+      "ServiceTopic": "DATA MANAGEMENT/DATA HANDLING",
+      "ServiceTerm": "REFORMATTER"
+    }
+  ],
+  "ServiceOrganizations": [
+    {
+      "Roles": [
+        "ORIGINATOR"
+      ],
+      "ShortName": "NASA/JPL/PODAAC",
+      "LongName": "Physical Oceanography Distributed Active Archive Center, Jet Propulsion Laboratory, NASA"
+    }
+  ],
+  "ServiceOptions": {
+    "SupportedInputFormats": [
+      "NETCDF-4"
+    ],
+    "SupportedOutputFormats": [
+      "GEOTIFF"
+    ]
+  },
+  "OperationMetadata": [
+    {
+      "OperationName": "Transaction",
+      "CoupledResource": {
+        "CouplingType": "MIXED"
+      }
+    }
+  ]
+}
