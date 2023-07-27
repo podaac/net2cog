@@ -13,17 +13,15 @@ import os
 import pathlib
 
 import harmony
-import harmony.util
-from harmony import BaseHarmonyAdapter
 
-from podaac.netcdf_converter import netcdf_convert
+from net2cog import netcdf_convert
 
 DATA_DIRECTORY_ENV = "DATA_DIRECTORY"
 
 
-class NetcdfConverterService(BaseHarmonyAdapter):
+class NetcdfConverterService(harmony.BaseHarmonyAdapter):
     """
-    See https://git.earthdata.nasa.gov/projects/HARMONY/repos/harmony-service-lib-py/browse
+    See https://github.com/nasa/harmony-service-lib-py
     for documentation and examples.
     """
 

@@ -8,12 +8,15 @@ Functions related to converting a NetCDF file to other formats.
 """
 
 import os
+import pathlib
 from os.path import join as pjoin, basename, dirname, exists, splitext
 import subprocess
 from subprocess import check_call
 
 import logging
 import tempfile
+from typing import List
+
 import xarray as xr
 import rasterio
 import rasterio.crs
@@ -61,7 +64,7 @@ def get_gtiff_name(output_file):
     out_fname = pjoin(dir_path, rel_path)
     if not exists(out_fname):
         os.makedirs(out_fname)
-    return out_fname
+    return pjoin(out_fname, rel_path)
 
 
 def _write_cogtiff(out_f_name, nc_xarray):
@@ -135,31 +138,22 @@ def _write_cogtiff(out_f_name, nc_xarray):
                 dst_profile = cog_profiles.get("deflate")
                 cog_translate(src_dst, out_fname, dst_profile)
 
-            # cog validation method
-            # cogtif_val = [
-            #     'rio',
-            #     'cogeo',
-            #     'validate',
-            #     out_fname
-            #     ]
-            # run_command(cogtif_val, dirname(out_f_name))
-
             cogs_generated.append(out_fname)
             LOGGER.info("Finished conversion, writing variable: %s", out_fname)
     LOGGER.info("NetCDF conversion complete. Returning COGs generated.")
     return cogs_generated
 
 
-def netcdf_converter(input_nc_file, output_cog_pathname, var_list=None):
+def netcdf_converter(input_nc_file: pathlib.Path, output_cog_pathname: pathlib.Path, var_list: list = ()) -> List[str]:
     """
     Primary function for beginning NetCDF conversion using rasterio,
     rioxarray and xarray
 
     Parameters
     ----------
-    input_nc_file : string
+    input_nc_file : pathlib.Path
         Path to  NetCDF file to process
-    output_cog_pathname : string
+    output_cog_pathname : pathlib.Path
         COG Output path and NetCDF filename, filename converted to cog variable
         filename (.tif)
             ex: tests/data/tmpygj2vgxf/
@@ -189,7 +183,7 @@ def netcdf_converter(input_nc_file, output_cog_pathname, var_list=None):
             # used to invert y axis
             # xds_reversed = xds.reindex(lat=xds.lat[::-1])
             LOGGER.info("Writing COG to %s", basename(gtiff_fname))
-            if var_list is not None and var_list != '':
+            if var_list:
                 xds = xds[var_list]
             return _write_cogtiff(gtiff_fname, xds)
         LOGGER.error("%s: NetCDF file does not contain spatial dimensions such as lat / lon "
