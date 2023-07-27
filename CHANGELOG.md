@@ -5,15 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Project migrated to https://github.com/podaac/net2cog
 
+## [0.2.0-alpha.15] - 26 July 2023
 ### Added
 - PCESA-2309 - Implemented the harmony-service-lib interface so that I can be run in the Harmony ngap account
 ### Changed
-- PCESA-2309 - Updated Jenkins to include building and pushing to ECC_NEXUS 
-### Deprecated
-### Removed
-### Fixed
-### Security
+- PCESA-2309 - Updated Jenkins to include building and pushing to ECC_NEXUS
 
 ## [0.2.0-alpha.14] - 3 September 2020
 ### Changed 
