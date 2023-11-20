@@ -24,10 +24,6 @@ ENV PATH="/home/dockeruser/.local/bin:${PATH}"
 
 # Add artifactory as a trusted pip index
 RUN mkdir $HOME/.pip
-RUN echo "[global]" >> $HOME/.pip/pip.conf && \
-    echo "index-url = https://cae-artifactory.jpl.nasa.gov/artifactory/api/pypi/pypi-release-virtual/simple" >> $HOME/.pip/pip.conf && \
-    echo "trusted-host = cae-artifactory.jpl.nasa.gov maven.earthdata.nasa.gov pypi.org"  >> $HOME/.pip/pip.conf && \
-    echo "extra-index-url = https://maven.earthdata.nasa.gov/repository/python-repo/simple https://pypi.org/simple" >> $HOME/.pip/pip.conf
 
 # The 'SOURCE' argument is what will be used in 'pip install'.
 ARG SOURCE
