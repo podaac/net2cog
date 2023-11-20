@@ -1,0 +1,12 @@
+--- /usr/local/lib/python3.8/site-packages/rioxarray/raster_writer.py	2023-10-19 11:07:08
++++ raster_writer.py	2023-10-19 11:06:12
+@@ -123,7 +123,8 @@
+     if the value of the nodata value changed.
+     """
+     # Complex-valued rasters can have real-valued nodata
+-    if str(new_dtype).startswith("c"):
++    new_dtype_str = str(new_dtype)
++    if new_dtype_str.startswith("c") or "date" in new_dtype_str or "time" in new_dtype_str:
+         nodata = original_nodata
+     else:
+         original_nodata = float(original_nodata)
