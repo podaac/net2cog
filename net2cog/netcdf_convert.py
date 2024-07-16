@@ -130,13 +130,14 @@ def _write_cogtiff(out_f_name, nc_xarray):
             LOGGER.info("Starting conversion... %s", out_fname)
 
             # default CRS setting
-            crs = rasterio.crs.CRS({"init": "epsg:3857"})
+            # crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
             with rasterio.open(temp_fname, mode='r+') as src_dst:
-                if src_dst.crs is None:
-                    src_dst.crs = crs
+                # if src_dst.crs is None:
+                #     src_dst.crs = crs
+                src_dst.crs = rasterio.crs.CRS.from_proj4("+proj=latlong")
                 dst_profile = cog_profiles.get("deflate")
-                cog_translate(src_dst, out_fname, dst_profile)
+                cog_translate(src_dst, out_fname, dst_profile, use_cog_driver=True)
 
             cogs_generated.append(out_fname)
             LOGGER.info("Finished conversion, writing variable: %s", out_fname)
