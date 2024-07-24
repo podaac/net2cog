@@ -199,7 +199,7 @@ jobs:
           poetry run sphinx-build -b html ./docs docs/_build/
       - name: Upload Docs Artifact
         id: docs
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs/_build/
       - name: Commit Version Bump
@@ -246,6 +246,8 @@ jobs:
       pages: write      # to deploy to Pages
       id-token: write   # to verify the deployment originates from an appropriate source
     steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v4
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
