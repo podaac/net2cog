@@ -14,18 +14,25 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      venue:
+        type: choice
+        description: Venue to deploy to
+        options:
+          - SIT
+          - UAT
 
-  # Only allow 1 execution of this workflow to be running at any given time per-branch.
-  concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+# Only allow 1 execution of this workflow to be running at any given time per-branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 
-  env:
-    POETRY_VERSION: "1.8.3"
-    PYTHON_VERSION: "3.10"
-    REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ github.repository }}
+env:
+  POETRY_VERSION: "1.8.3"
+  PYTHON_VERSION: "3.10"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
