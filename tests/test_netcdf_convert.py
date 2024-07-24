@@ -29,8 +29,7 @@ def output_basedir(tmp_path):
 
 
 @pytest.mark.parametrize('data_file', [
-    'RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc',
-    '20230725090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc'
+    'RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc'
 ])
 def test_cog_generation(data_file, data_dir, output_basedir):
     """

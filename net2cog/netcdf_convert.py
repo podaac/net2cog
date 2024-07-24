@@ -19,7 +19,7 @@ from typing import List
 
 import xarray as xr
 import rasterio
-import rasterio.crs
+from rasterio import CRS
 
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
@@ -28,6 +28,7 @@ import rioxarray  # noqa
 from rioxarray.exceptions import DimensionError
 
 LOGGER = logging.getLogger(__name__)
+EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 
 
 def run_command(command, work_dir):
@@ -89,18 +90,18 @@ def _write_cogtiff(out_f_name, nc_xarray):
 
     cogs_generated = []
     with tempfile.TemporaryDirectory() as tempdir:
-        exclude_vars = ['lon', 'lat', 'longitude', 'latitude', 'time']
+
         # variables in netcdf
         for var in nc_xarray.variables:
-            if var in exclude_vars:
+            if var in EXCLUDE_VARS:
                 continue
             LOGGER.debug("NetCDF Var: %s", var)
 
             def rioxr_swapdims(netcdf_xarray):
                 netcdf_xarray.coords['y'] = ('lat', netcdf_xarray.lat)
                 netcdf_xarray.coords['x'] = ('lon', netcdf_xarray.lon)
-                nc_xarray_temp = netcdf_xarray.swap_dims({'lat': 'y', 'lon': 'x'})
-                return nc_xarray_temp
+
+                return netcdf_xarray.swap_dims({'lat': 'y', 'lon': 'x'})
 
             # copy to a tempfolder
             out_fname = out_f_name + '_' + var + '.tif'
@@ -132,12 +133,12 @@ def _write_cogtiff(out_f_name, nc_xarray):
             # default CRS setting
             # crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
-            with rasterio.open(temp_fname, mode='r+') as src_dst:
+            with rasterio.open(temp_fname, mode='r+') as src_dataset:
                 # if src_dst.crs is None:
                 #     src_dst.crs = crs
-                src_dst.crs = rasterio.crs.CRS.from_proj4("+proj=latlong")
+                src_dataset.crs = CRS.from_proj4(proj="+proj=latlong")
                 dst_profile = cog_profiles.get("deflate")
-                cog_translate(src_dst, out_fname, dst_profile, use_cog_driver=True)
+                cog_translate(src_dataset, out_fname, dst_profile, use_cog_driver=True)
 
             cogs_generated.append(out_fname)
             LOGGER.info("Finished conversion, writing variable: %s", out_fname)
@@ -180,7 +181,9 @@ def netcdf_converter(input_nc_file: pathlib.Path, output_cog_pathname: pathlib.P
         xds = xr.open_dataset(netcdf_file)
 
         # NetCDF must have spatial dimensions
-        if ("lon" and "lat") or ("longitude" and "latitude") or ("x" and "y") in xds.dims:
+        if (({"lon", "lat"}.issubset(set(xds.dims)))
+                or ({"longitude", "latitude"}.issubset(set(xds.dims)))
+                or ({"x", "y"}.issubset(set(xds.dims)))):
             # used to invert y axis
             # xds_reversed = xds.reindex(lat=xds.lat[::-1])
             LOGGER.info("Writing COG to %s", basename(gtiff_fname))

@@ -142,11 +142,11 @@ jobs:
         run: poetry install -E harmony
       - name: Lint
         run: |
-          poetry run pylint podaac
-          poetry run flake8 podaac
+          poetry run pylint net2cog
+          poetry run flake8 net2cog
       - name: Test and coverage
         run: |
-          poetry run pytest -n auto --junitxml=build/reports/pytest.xml --cov=podaac/ --cov-report=xml:build/reports/coverage.xml -m "not aws and not integration" tests/
+          poetry run pytest --junitxml=build/reports/pytest.xml --cov=net2cog/ --cov-report=xml:build/reports/coverage.xml -m "not aws and not integration" tests/
       - name: SonarCloud Scan
         id: sonarcloud
         uses: sonarsource/sonarcloud-github-action@master
@@ -158,7 +158,7 @@ jobs:
             -Dsonar.organization=${{ github.repository_owner }}
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.python.coverage.reportPaths=build/reports/coverage.xml
-            -Dsonar.sources=podaac/
+            -Dsonar.sources=net2cog/
             -Dsonar.tests=tests/
             -Dsonar.projectName=${{ github.repository }}
             -Dsonar.projectVersion=${{ env.software_version }}
