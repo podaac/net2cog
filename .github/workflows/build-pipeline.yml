@@ -45,7 +45,6 @@ jobs:
       deploy_env: ${{ steps.poetry-build.outputs.deploy_env }}
       version: ${{ steps.poetry-build.outputs.the_version }}
       pyproject_name: ${{ steps.poetry-build.outputs.pyproject_name }}
-      docs_artifact_id: ${{ steps.docs.outputs.artifact_id }}
     steps:
       - uses: getsentry/action-github-app-token@v3
         name: podaac cicd token
@@ -251,8 +250,6 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          artifact_name: ${{ needs.build.outputs.docs_artifact_id }}
 
   publish-umms:
     name: Publish UMM-S
