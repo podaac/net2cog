@@ -5,55 +5,103 @@ on:
   # Triggers the workflow on push events
   push:
     branches: [ develop, release/**, main, feature/**, issue/**, issues/**, dependabot/** ]
+    tags-ignore:
+      - '*'
+    # Do not trigger build if pyproject.toml was the only thing changed
+    paths-ignore:
+      - 'pyproject.toml'
+      - 'poetry.lock'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Only allow 1 execution of this workflow to be running at any given time per-branch.
+  concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+
+  env:
+    POETRY_VERSION: "1.8.3"
+    PYTHON_VERSION: "3.10"
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # First job in the workflow installs and verifies the software
   build:
     name: Build, Test, Verify, Publish
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+    outputs:
+      deploy_env: ${{ steps.poetry-build.outputs.deploy_env }}
+      version: ${{ steps.poetry-build.outputs.the_version }}
+      pyproject_name: ${{ steps.poetry-build.outputs.pyproject_name }}
+      docs_artifact_id: ${{ steps.docs.outputs.artifact_id }}
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: getsentry/action-github-app-token@v3
+        name: podaac cicd token
+        id: podaac-cicd
+        with:
+          app_id: ${{ secrets.CICD_APP_ID }}
+          private_key: ${{ secrets.CICD_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          repository: ${{ github.repository }}
+          token: ${{ steps.podaac-cicd.outputs.token }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v2.0.0
+        uses: abatilo/actions-poetry@v3
         with:
-          poetry-version: 1.3.2
-      - name: Get version
+          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: Setup a local virtual environment
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v4
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Get pre-build version
         id: get-version
         run: |
           echo "current_version=$(poetry version | awk '{print $2}')" >> $GITHUB_OUTPUT
           echo "pyproject_name=$(poetry version | awk '{print $1}')" >> $GITHUB_ENV
+      - name: Manual Build
+        # If triggered by workflow dispatch, no version bump
+        if: github.event_name == 'workflow_dispatch'
+        id: manual
+        run: |
+          echo "TARGET_ENV_UPPERCASE=${{ github.event.inputs.venue }}" >> $GITHUB_ENV
       - name: Bump pre-alpha version
-        # If triggered by push to a feature branch
+        # If triggered by push to a non-tracked branch
         if: |
-          ${{ startsWith(github.ref, 'refs/heads/issue') }}      ||
-          ${{ startsWith(github.ref, 'refs/heads/dependabot/') }} ||
-          ${{ startsWith(github.ref, 'refs/heads/feature/') }}
+          github.ref != 'refs/heads/develop' &&
+          github.ref != 'refs/heads/main' &&
+          !startsWith(github.ref, 'refs/heads/release/')
         run: |
           new_ver="${{ steps.get-version.outputs.current_version }}+$(git rev-parse --short ${GITHUB_SHA})"
           poetry version $new_ver
-          echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
+          echo "TARGET_ENV_UPPERCASE=SIT" >> $GITHUB_ENV
       - name: Bump alpha version
         # If triggered by push to the develop branch
-        if: ${{ github.ref == 'refs/heads/develop' }}
+        if: |
+          github.ref == 'refs/heads/develop' &&
+          steps.manual.conclusion == 'skipped'
+        id: alpha
         run: |
           poetry version prerelease
-          echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
-          echo "venue=sit" >> $GITHUB_ENV
+          echo "TARGET_ENV_UPPERCASE=SIT" >> $GITHUB_ENV
       - name: Bump rc version
         # If triggered by push to a release branch
-        if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+        if: |
+          startsWith(github.ref, 'refs/heads/release/') &&
+          steps.manual.conclusion == 'skipped'
+        id: rc
         env:
           # True if the version already has a 'rc' pre-release identifier
           BUMP_RC: ${{ contains(steps.get-version.outputs.current_version, 'rc') }}
@@ -63,11 +111,13 @@ jobs:
           else
             poetry version ${GITHUB_REF#refs/heads/release/}rc1
           fi
-          echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
-          echo "venue=uat" >> $GITHUB_ENV
+          echo "TARGET_ENV_UPPERCASE=UAT" >> $GITHUB_ENV
       - name: Release version
         # If triggered by push to the main branch
-        if: ${{ startsWith(github.ref, 'refs/heads/main') }}
+        if: |
+          startsWith(github.ref, 'refs/heads/main') &&
+          steps.manual.conclusion == 'skipped'
+        id: release
         env:
           CURRENT_VERSION: ${{ steps.get-version.outputs.current_version }}
         # Remove rc* from end of version string
@@ -76,7 +126,12 @@ jobs:
           poetry version ${CURRENT_VERSION%%rc*}
           echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
           echo "venue=ops" >> $GITHUB_ENV
-      - name: Install l2ss-py
+          echo "TARGET_ENV_UPPERCASE=OPS" >> $GITHUB_ENV
+      - name: Get install version
+        # Get the version of the software being installed and save it as an ENV var
+        run: |
+          echo "software_version=$(poetry version | awk '{print $2}')" >> $GITHUB_ENV
+      - name: Install software
         run: poetry install -E harmony
       - name: Lint
         run: |
@@ -94,35 +149,13 @@ jobs:
         with:
           args: >
             -Dsonar.organization=${{ github.repository_owner }}
-            -Dsonar.projectKey=${{ github.repository_owner }}_l2ss-py
+            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.python.coverage.reportPaths=build/reports/coverage.xml
             -Dsonar.sources=podaac/
             -Dsonar.tests=tests/
-            -Dsonar.projectName=l2ss-py
+            -Dsonar.projectName=${{ github.repository }}
             -Dsonar.projectVersion=${{ env.software_version }}
-            -Dsonar.python.version=3.8,3.9,3.10
-        continue-on-error: true
-      - name: Wait to retry sonarcloud scan
-        if: steps.sonarcloud.outcome == 'failure'
-        run: |
-          sleep 40
-      - name: SonarCloud Scan Retry
-        id: sonarcloud-retry
-        if: steps.sonarcloud.outcome == 'failure'
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=${{ github.repository_owner }}
-            -Dsonar.projectKey=${{ github.repository_owner }}_l2ss-py
-            -Dsonar.python.coverage.reportPaths=build/reports/coverage.xml
-            -Dsonar.sources=podaac/
-            -Dsonar.tests=tests/
-            -Dsonar.projectName=l2ss-py
-            -Dsonar.projectVersion=${{ env.software_version }}
-            -Dsonar.python.version=3.8,3.9,3.10
+            -Dsonar.python.version=3.9,3.10
       - name: Run Snyk as a blocking step
         uses: snyk/actions/python-3.10@master
         env:
@@ -143,76 +176,142 @@ jobs:
           args: >
             --org=${{ secrets.SNYK_ORG_ID }}
             --project-name=${{ github.repository }}
-      - name: Commit Version Bump
-        # If building develop, a release branch, or main then we commit the version bump back to the repo
-        if: |
-          github.ref == 'refs/heads/develop' ||
-          github.ref == 'refs/heads/main'    ||
-          startsWith(github.ref, 'refs/heads/release')
+      - name: Build Python Artifact
+        id: poetry-build
         run: |
-          git config --global user.name 'l2ss-py bot'
-          git config --global user.email 'l2ss-py@noreply.github.com'
+          poetry build
+          echo "deploy_env=${{ env.TARGET_ENV_UPPERCASE }}" >> $GITHUB_OUTPUT
+          echo "the_version=$(poetry version | awk '{print $2}')" >> $GITHUB_OUTPUT
+          echo "pyproject_name=$(poetry version | awk '{print $1}')" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.poetry-build.outputs.pyproject_name }}-dist
+          path: dist/*
+      - name: Build Docs
+        run: |
+          poetry run sphinx-build -b html ./docs docs/_build/
+      - name: Upload Docs Artifact
+        id: docs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/
+      - name: Commit Version Bump
+        # If building an alpha, release candidate, or release then we commit the version bump back to the repo
+        if: |
+          steps.alpha.conclusion == 'success'   ||
+          steps.rc.conclusion == 'success'      ||
+          steps.release.conclusion == 'success'
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
           git commit -am "/version ${{ env.software_version }}"
           git push
+      - name: Push Tag
+        if: |
+          steps.alpha.conclusion == 'success'   ||
+          steps.rc.conclusion == 'success'      ||
+          steps.release.conclusion == 'success'
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git tag -a "${{ env.software_version }}" -m "Version ${{ env.software_version }}"
+          git push origin "${{ env.software_version }}"
+      - name: Create GH release
+        if: |
+          steps.alpha.conclusion == 'success'   ||
+          steps.rc.conclusion == 'success'      ||
+          steps.release.conclusion == 'success'
+        uses: ncipollo/release-action@v1
+        with:
+          generateReleaseNotes: true
+          name: ${{ env.software_version }}
+          prerelease: ${{ steps.alpha.conclusion == 'success' || steps.rc.conclusion == 'success'}}
+          tag: ${{ env.software_version }}
+
+  publish-docs:
+    name: Publish Docs
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.docs_artifact_id }}
+
+  publish-umms:
+    name: Publish UMM-S
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    if: ${{ contains(fromJSON('["UAT", "OPS"]'), needs.build.outputs.deploy_env) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: set environment vars
+        id: lowercase
+        run: |
+          echo TARGET_ENV_LOWERCASE=${{ needs.build.outputs.deploy_env }} | tr '[:upper:]' '[:lower:]' >> "$GITHUB_OUTPUT"
+
       - name: Publish UMM-S with new version
         id: publish-umm-s
-        uses: podaac/cmr-umm-updater@0.6.0
+        uses: podaac/cmr-umm-updater@0.7.1
         if: |
           github.ref == 'refs/heads/main'    ||
           startsWith(github.ref, 'refs/heads/release')
         with:
-          umm-json: 'cmr/l2ss_cmr_umm_s.json'
+          umm-json: 'cmr/netcdf_cmr_umm_s.json'
           provider: 'POCLOUD'
-          env: ${{ env.venue }}
-          version: ${{ env.software_version }}
+          env: ${{ steps.lowercase.outputs.TARGET_ENV_LOWERCASE }}
+          version: ${{ needs.build.outputs.version }}
           timeout: 60
           disable_removal: 'true'
           umm_type: 'umm-s'
-          use_associations: 'false'        
+          use_associations: 'true'
+          umm_version: 1.5.2
         env:
           LAUNCHPAD_TOKEN_SIT: ${{secrets.LAUNCHPAD_TOKEN_SIT}}
           LAUNCHPAD_TOKEN_UAT: ${{secrets.LAUNCHPAD_TOKEN_UAT}}
           LAUNCHPAD_TOKEN_OPS: ${{secrets.LAUNCHPAD_TOKEN_OPS}}
         continue-on-error: true
-      - name: Wait to retry publishing umm-s
+
+      - name: Wait to retry publishing UMM-S
         if: steps.publish-umm-s.outcome == 'failure'
         run: |
           sleep 120
+
       - name: Publish UMM-S with new version retry
         id: publish-umm-s-retry
-        uses: podaac/cmr-umm-updater@0.6.0
+        uses: podaac/cmr-umm-updater@0.7.1
         if: |
           steps.publish-umm-s.outcome == 'failure'
         with:
-          umm-json: 'cmr/l2ss_cmr_umm_s.json'
+          umm-json: 'cmr/netcdf_cmr_umm_s.json'
           provider: 'POCLOUD'
-          env: ${{ env.venue }}
-          version: ${{ env.software_version }}
+          env: ${{ steps.lowercase.outputs.TARGET_ENV_LOWERCASE }}
+          version: ${{ needs.build.outputs.version }}
           timeout: 60
           disable_removal: 'true'
           umm_type: 'umm-s'
-          use_associations: 'false'        
+          use_associations: 'false'
+          umm_version: 1.5.2
         env:
           LAUNCHPAD_TOKEN_SIT: ${{secrets.LAUNCHPAD_TOKEN_SIT}}
           LAUNCHPAD_TOKEN_UAT: ${{secrets.LAUNCHPAD_TOKEN_UAT}}
           LAUNCHPAD_TOKEN_OPS: ${{secrets.LAUNCHPAD_TOKEN_OPS}}
-      - name: Build Docs
-        run: |
-          poetry run sphinx-build -b html ./docs docs/_build/
-      - name: Publish Docs
-        uses: JamesIves/github-pages-deploy-action@v4
-        if: ${{ github.actor != 'dependabot[bot]' }}
-        with:
-          branch: gh-pages # The branch the action should deploy to.
-          folder: docs/_build/ # The folder the action should deploy.
-          target-folder: ${{ env.software_version }}
-      - name: Build Python Artifact
-        run: |
-          poetry build
-      - uses: actions/upload-artifact@v3
-        with:
-          name: python-artifact
-          path: dist/*
+
+  publish-pypi:
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/develop' ||
+      startsWith(github.ref, 'refs/heads/release') ||
+      github.ref == 'refs/heads/main'
+    steps:
       - name: Publish to test.pypi.org
         id: pypi-test-publish
         if: |
@@ -230,19 +329,22 @@ jobs:
           POETRY_PYPI_TOKEN_PYPI: ${{secrets.POETRY_PYPI_TOKEN_PYPI}}
         run: |
           poetry publish
+
+  publish-docker:
+    needs: [ build, publish-pypi ]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    outputs:
+      container_image_uri: ${{ steps.set-outputs.outputs.container_image_uri }}
+    steps:
       - name: Log in to the Container registry
-        if: |
-          steps.pypi-test-publish.conclusion == 'success' ||
-          steps.pypi-publish.conclusion == 'success'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Extract metadata (tags, labels) for Docker
-        if: |
-          steps.pypi-test-publish.conclusion == 'success' ||
-          steps.pypi-publish.conclusion == 'success'
         id: meta
         uses: docker/metadata-action@v4
         with:
@@ -251,16 +353,10 @@ jobs:
             type=pep440,pattern={{version}},value=${{ env.software_version }}
             type=raw,value=${{ env.venue }}
       - name: Wait for package
-        if: |
-          steps.pypi-test-publish.conclusion == 'success' ||
-          steps.pypi-publish.conclusion == 'success'
         run: |
           pip install tenacity
           ${GITHUB_WORKSPACE}/.github/workflows/wait-for-pypi.py ${{env.pyproject_name}}[harmony]==${{ env.software_version }}
       - name: Build and push Docker image
-        if: |
-          steps.pypi-test-publish.conclusion == 'success' ||
-          steps.pypi-publish.conclusion == 'success'
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -271,34 +367,22 @@ jobs:
           pull: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      - name: Run Snyk on Docker Image
-        if: |
-          steps.pypi-test-publish.conclusion == 'success' ||
-          steps.pypi-publish.conclusion == 'success'
-        # Snyk can be used to break the build when it detects vulnerabilities.
-        # In this case we want to upload the issues to GitHub Code Scanning
-        continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: ${{ steps.meta.outputs.tags[0] }}
-          args: >
-            --severity-threshold=high
-      - name: Push Tag
-        if: |
-          github.ref == 'refs/heads/develop' ||
-          github.ref == 'refs/heads/main'    ||
-          startsWith(github.ref, 'refs/heads/release')
+      - name: Set output
+        id: set-outputs
         run: |
-          git config user.name "${GITHUB_ACTOR}"
-          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git tag -a "${{ env.software_version }}" -m "Version ${{ env.software_version }}"
-          git push origin "${{ env.software_version }}"
+          echo "container_image_uri=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> $GITHUB_OUTPUT
 
+  deploy:
+    needs: [ build, publish-docker ]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.build.outputs.deploy_env }}
+    env:
+      ENV: ${{ needs.build.outputs.deploy_env }}
+      THE_VERSION: ${{ needs.build.outputs.version }}
+      CONTAINER_IMAGE_URI: ${{ needs.publish-docker.outputs.container_image_uri }}
+    steps:
       - name: Deploy Harmony
         env:
-            ENV: ${{ env.venue }}
             CMR_USER: ${{ secrets.CMR_USER }}
             CMR_PASS: ${{ secrets.CMR_PASS }}
         if: |
@@ -306,4 +390,4 @@ jobs:
           startsWith(github.ref, 'refs/heads/release')
         working-directory: deployment
         run: 
-          poetry run python harmony_deploy.py --tag ${{ env.software_version }} 
+          echo "Deploy $CONTAINER_IMAGE_URI to $ENV"
