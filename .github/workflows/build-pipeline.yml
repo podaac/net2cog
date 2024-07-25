@@ -321,8 +321,7 @@ jobs:
     if: |
       github.ref == 'refs/heads/develop' ||
       startsWith(github.ref, 'refs/heads/release') ||
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'workflow_dispatch'
+      github.ref == 'refs/heads/main'
     steps:
       - name: Download python dist
         uses: actions/download-artifact@v4
@@ -333,15 +332,13 @@ jobs:
         id: pypi-test-publish
         if: |
           github.ref == 'refs/heads/develop' ||
-          startsWith(github.ref, 'refs/heads/release') ||
-          contains(fromJSON('["SIT", "UAT"]'), needs.build.outputs.deploy_env)
+          startsWith(github.ref, 'refs/heads/release')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
       - name: Publish to pypi.org
         if: |
-          github.ref == 'refs/heads/main' ||
-          contains(fromJSON('["OPS"]'), needs.build.outputs.deploy_env)
+          github.ref == 'refs/heads/main'
         id: pypi-publish
         uses: pypa/gh-action-pypi-publish@release/v1
 
