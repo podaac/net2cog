@@ -349,10 +349,6 @@ jobs:
       packages: write
     outputs:
       container_image_uri: ${{ steps.set-outputs.outputs.container_image_uri }}
-    env:
-      VENUE: ${{ needs.build.outputs.deploy_env }}
-      SOFTWARE_VERSION: ${{ needs.build.outputs.version }}
-      PYPROJECT_NAME: ${{ needs.build.outputs.pyproject_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Log in to the Container registry
@@ -367,19 +363,19 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=pep440,pattern={{version}},value=${{ env.software_version }}
-            type=raw,value=${{ env.venue }}
+            type=pep440,pattern={{version}},value=${{ needs.build.outputs.version }}
+            type=raw,value=${{ needs.build.outputs.deploy_env }}
       - name: Wait for package
         run: |
           pip install tenacity
-          ${GITHUB_WORKSPACE}/.github/workflows/wait-for-pypi.py ${{env.pyproject_name}}[harmony]==${{ env.software_version }}
+          ${GITHUB_WORKSPACE}/.github/workflows/wait-for-pypi.py ${{needs.build.outputs.pyproject_name}}[harmony]==${{ needs.build.outputs.version }}
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
           file: docker/Dockerfile
           build-args: |
-            SOURCE=${{env.pyproject_name}}[harmony]==${{ env.software_version }}
+            SOURCE=${{needs.build.outputs.pyproject_name}}[harmony]==${{ needs.build.outputs.version }}
           push: true
           pull: true
           tags: ${{ steps.meta.outputs.tags }}
