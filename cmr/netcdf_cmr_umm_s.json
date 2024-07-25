@@ -1,22 +1,13 @@
 {
-  "Name": "PODAAC NetCDF Reformatter",
-  "LongName": "PODAAC NetCDF Reformatter",
-  "Type": "WEB SERVICES",
-  "Version": "0.1",
-  "Description": "Endpoint for converting NetCDF files to COG via harmony/harp",
-  "AccessConstraints": "None",
-  "UseConstraints": {},
+  "Name": "net2cog",
+  "Description": "Converts NetCDF files to COG. Includes extension for running in NASA Harmony. https://github.com/podaac/net2cog",
+  "Type": "Harmony",
   "URL": {
-      "Description": "PROJECT HOME PAGE",
-      "URLValue": "https://podaac.jpl.nasa.gov/"
+    "URLValue": "https://harmony.earthdata.nasa.gov",
+    "Description": "PROJECT HOME PAGE"
   },
-  "ServiceKeywords": [
-    {
-      "ServiceCategory": "EARTH SCIENCE SERVICES",
-      "ServiceTopic": "DATA MANAGEMENT/DATA HANDLING",
-      "ServiceTerm": "REFORMATTER"
-    }
-  ],
+  "Version": "#.#.#",
+  "LongName": "Network Common Data Form (NetCDF) to Cloud Optimized GeoTIFF (COG)",
   "ServiceOrganizations": [
     {
       "Roles": [
@@ -27,19 +18,55 @@
     }
   ],
   "ServiceOptions": {
-    "SupportedInputFormats": [
-      "NETCDF-4"
-    ],
-    "SupportedOutputFormats": [
-      "GEOTIFF"
+    "SupportedReformattings": [
+      {
+        "SupportedOutputFormats": [
+          "COG"
+        ],
+        "SupportedInputFormat": "NETCDF-4"
+      }
     ]
   },
-  "OperationMetadata": [
+  "AccessConstraints": "None",
+  "ServiceKeywords": [
     {
-      "OperationName": "Transaction",
-      "CoupledResource": {
-        "CouplingType": "MIXED"
-      }
+      "ServiceCategory": "EARTH SCIENCE SERVICES",
+      "ServiceTopic": "DATA MANAGEMENT/DATA HANDLING",
+      "ServiceTerm": "DATA INTEROPERABILITY",
+      "ServiceSpecificTerm": "DATA REFORMATTING"
+    }
+  ],
+  "MetadataSpecification": {
+    "URL": "https://cdn.earthdata.nasa.gov/umm/service/v1.4",
+    "Name": "UMM-S",
+    "Version": "1.4"
+  },
+  "ContactGroups": [
+    {
+      "Roles": [
+        "SOFTWARE AUTHOR"
+      ],
+      "ContactInformation": {
+        "ContactMechanisms": [
+          {
+            "Type": "Other",
+            "Value": "https://github.com/podaac/net2cog/issues"
+          },
+          {
+            "Type": "Email",
+            "Value": "podaac@jpl.nasa.gov"
+          }
+        ]
+      },
+      "GroupName": "PO.DAAC"
+    }
+  ],
+  "RelatedURLs": [
+    {
+      "URL": "https://github.com/podaac/net2cog",
+      "URLContentType": "PublicationURL",
+      "Type": "VIEW RELATED INFORMATION",
+      "Subtype": "GENERAL DOCUMENTATION"
     }
   ]
 }

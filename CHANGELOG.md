@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Project migrated to https://github.com/podaac/net2cog
+- [issues/4](https://github.com/podaac/net2cog/issues/4): Updated UMM-S record for net2cog service
 
 ## [0.2.0-alpha.15] - 26 July 2023
 ### Added
