@@ -45,6 +45,7 @@ jobs:
       deploy_env: ${{ steps.poetry-build.outputs.deploy_env }}
       version: ${{ steps.poetry-build.outputs.the_version }}
       pyproject_name: ${{ steps.poetry-build.outputs.pyproject_name }}
+      python_dist: ${{ steps.poetry-build.outputs.pyproject_name }}-dist
     steps:
       - uses: getsentry/action-github-app-token@v3
         name: podaac cicd token
@@ -190,6 +191,7 @@ jobs:
           echo "the_version=$(poetry version | awk '{print $2}')" >> $GITHUB_OUTPUT
           echo "pyproject_name=$(poetry version | awk '{print $1}')" >> $GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
+        id: python-dist
         with:
           name: ${{ steps.poetry-build.outputs.pyproject_name }}-dist
           path: dist/*
@@ -313,28 +315,35 @@ jobs:
   publish-pypi:
     needs: [ build ]
     runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     if: |
       github.ref == 'refs/heads/develop' ||
       startsWith(github.ref, 'refs/heads/release') ||
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     steps:
+      - name: Download python dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.python_dist }}
+          path: ${{ env.GITHUB_WORKSPACE }}/dist
       - name: Publish to test.pypi.org
         id: pypi-test-publish
         if: |
           github.ref == 'refs/heads/develop' ||
-          startsWith(github.ref, 'refs/heads/release')
-        env:
-          POETRY_PYPI_TOKEN_TESTPYPI: ${{secrets.POETRY_PYPI_TOKEN_TESTPYPI}}
-        run: |
-          poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish -r testpypi
+          startsWith(github.ref, 'refs/heads/release') ||
+          contains(fromJSON('["SIT", "UAT"]'), needs.build.outputs.deploy_env)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
       - name: Publish to pypi.org
-        if: ${{ github.ref == 'refs/heads/main' }}
+        if: |
+          github.ref == 'refs/heads/main' ||
+          contains(fromJSON('["OPS"]'), needs.build.outputs.deploy_env)
         id: pypi-publish
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{secrets.POETRY_PYPI_TOKEN_PYPI}}
-        run: |
-          poetry publish
+        uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-docker:
     needs: [ build, publish-pypi ]
