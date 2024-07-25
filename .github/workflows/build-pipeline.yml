@@ -349,6 +349,10 @@ jobs:
       packages: write
     outputs:
       container_image_uri: ${{ steps.set-outputs.outputs.container_image_uri }}
+    env:
+      VENUE: ${{ needs.build.outputs.deploy_env }}
+      SOFTWARE_VERSION: ${{ needs.build.outputs.version }}
+      PYPROJECT_NAME: ${{ needs.build.outputs.pyproject_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Log in to the Container registry
