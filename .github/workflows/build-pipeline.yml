@@ -328,7 +328,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build.outputs.python_dist }}
-          path: ${{ env.GITHUB_WORKSPACE }}/dist
+          path: ${{ github.workspace }}/dist
       - name: Publish to test.pypi.org
         id: pypi-test-publish
         if: |
