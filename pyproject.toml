@@ -38,11 +38,6 @@ harmony = ["harmony-service-lib"]
 
 [tool.poetry.scripts]
 net2cog_harmony = 'net2cog.netcdf_convert_harmony:main'
-net2cog = 'net2cog.netcdf_convert:main'
-
-[tool.poetry.scripts]
-l2ss_harmony = 'podaac.subsetter.subset_harmony:main'
-l2ss-py = 'podaac.subsetter.run_subsetter:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
