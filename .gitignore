@@ -10,3 +10,4 @@ build/
 .aws
 .bash_history
 .cache
+/.coverage

@@ -57,8 +57,7 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
                 directory_name = os.path.splitext(os.path.basename(granule.local_filename))[0]
                 output_file_directory = os.path.join(self.job_data_dir,
                                                      f'converted_{directory_name}')
-                output_filename = f'{output_file_directory}/' \
-                                  f'{os.path.basename(granule.name)}'
+                output_filename = pathlib.Path(f'{output_file_directory}').joinpath(os.path.basename(granule.name))
                 self.logger.debug('output: %s', output_filename)
 
                 # Run the netcdf converter for the complete netcdf granule
@@ -66,7 +65,7 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
                     granule.local_filename, output_filename
                 )
                 current_progress = int(100 * i / len(granules))
-                next_progress = int(100 * (i+1) / len(granules))
+                next_progress = int(100 * (i + 1) / len(granules))
                 for cog in cogs_generated:
                     if message.isSynchronous:
                         self.completed_with_local_file(
