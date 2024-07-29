@@ -8,11 +8,11 @@ Test the harmony service
 import json
 import os.path
 import sys
-import pytest
-
 from unittest.mock import patch
 
-import podaac.netcdf_converter.netcdf_convert_harmony
+import pytest
+
+import net2cog.netcdf_convert_harmony
 
 
 @pytest.fixture(scope='function')
@@ -34,9 +34,17 @@ def mock_environ(tmp_path):
     os.environ['ENV'] = "test"
     os.environ['DATA_DIRECTORY'] = str(tmp_path)
 
+    os.environ['OAUTH_CLIENT_ID'] = ''
+    os.environ['OAUTH_UID'] = ''
+    os.environ['OAUTH_PASSWORD'] = ''
+    os.environ['OAUTH_REDIRECT_URI'] = ''
+    os.environ['STAGING_PATH'] = ''
+    os.environ['STAGING_BUCKET'] = ''
+
     yield
 
     os.environ = old_env
+
 
 def test_service_invoke(mock_environ):
     test_dir = os.path.dirname(os.path.realpath(__file__))
@@ -46,10 +54,10 @@ def test_service_invoke(mock_environ):
     input_json['sources'][0]['granules'][0]['url'] = f'file://{test_granule}'
 
     test_args = [
-        podaac.netcdf_converter.netcdf_convert_harmony.__file__,
+        net2cog.netcdf_convert_harmony.__file__,
         "--harmony-action", "invoke",
         "--harmony-input", json.dumps(input_json)
     ]
 
     with patch.object(sys, 'argv', test_args):
-        podaac.netcdf_converter.netcdf_convert_harmony.main()
+        net2cog.netcdf_convert_harmony.main()

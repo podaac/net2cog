@@ -5,115 +5,87 @@ test_netcdf_convert.py
 
 Test the netcdf conversion functionality.
 """
-import shutil
+import os.path
+import pathlib
 import subprocess
-import tempfile
-import unittest
-from os import listdir, walk
-from os.path import dirname, join, realpath, isfile
+from os import walk
+from os.path import dirname, join, realpath
 
-import netCDF4 as nc
-import numpy as np
-import xarray as xr
 import pytest
 
-from podaac.netcdf_converter import netcdf_convert
+from net2cog import netcdf_convert
 
-class TestNetCDFConverter(unittest.TestCase):
+
+@pytest.fixture(scope='session')
+def data_dir():
+    test_dir = dirname(realpath(__file__))
+    test_data_dir = join(test_dir, 'data')
+    return test_data_dir
+
+
+@pytest.fixture(scope="function")
+def output_basedir(tmp_path):
+    return tmp_path
+
+
+@pytest.mark.parametrize('data_file', [
+    'RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc'
+])
+def test_cog_generation(data_file, data_dir, output_basedir):
     """
-    Unit tests for the NetCDF converter. These tests are all related to the
-    NetCDF conversion functionality itself, and should provide coverage on the
-    following files:
+    Test that the conversion works and the output is a valid cloud optimized geotiff
+    """
+    test_file = pathlib.Path(data_dir, data_file)
+    output_dir = pathlib.Path(output_basedir, pathlib.Path(data_file).stem)
 
-    - podaac.netcdf_converter.netcdf_convert.py
+    netcdf_convert.netcdf_converter(test_file, pathlib.Path(output_basedir, data_file), [])
+
+    assert os.path.isdir(output_dir)
+    output_files = os.listdir(output_dir)
+    assert len(output_files) > 0
+
+    with os.scandir(output_dir) as outdir:
+        for entry in outdir:
+            if entry.is_file():
+
+                cogtif_val = [
+                    'rio',
+                    'cogeo',
+                    'validate',
+                    entry.path
+                ]
+
+                process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+                cog_test = process.stdout
+                cog_test = cog_test.replace("\n", "")
+
+                valid_cog = entry.path + " is a valid cloud optimized GeoTIFF"
+                assert cog_test == valid_cog
+
+
+def test_band_selection(data_dir, output_basedir):
+    """
+    Verify the correct bands asked for by the user are being converted
     """
 
-    @classmethod
-    def setUpClass(cls):
-        cls.test_dir = dirname(realpath(__file__))
-        cls.test_data_dir = join(cls.test_dir, 'data')
-        cls.nc_output_dir = tempfile.mkdtemp(dir=cls.test_data_dir)
-        cls.test_files = [f for f in listdir(cls.test_data_dir)
-                          if isfile(join(cls.test_data_dir, f)) and f.endswith(".nc")]
+    in_bands = sorted(['gland', 'fland', 'sss_smap'])
+    data_file = 'RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc'
+    test_file = pathlib.Path(data_dir, data_file)
+    output_dir = pathlib.Path(output_basedir, pathlib.Path(data_file).stem)
 
-    @classmethod
-    def tearDownClass(cls):
-        # Remove the temporary directories used to house netcdf data
-        shutil.rmtree(cls.nc_output_dir)
+    results = netcdf_convert.netcdf_converter(test_file, pathlib.Path(output_basedir, data_file), in_bands)
 
+    assert os.path.isdir(output_dir)
+    output_files = os.listdir(output_dir)
+    assert len(output_files) == 3
+    assert len(results) == 3
 
-    def test_cog_validation(self):
-        """
-        Test that the input NetCDF file contains spatial attributes
-        """
-        for file in self.test_files:
-            output_file = "{}_{}".format(self._testMethodName, file)
-            netcdf_convert.netcdf_converter(
-                join(self.test_data_dir, file), join(self.nc_output_dir, output_file), None)
+    out_bands = []
+    with os.scandir(output_dir) as outdir:
+        for entry in outdir:
+            if entry.is_file():
+                band_completed = entry.name.split("4.0_")[-1].replace(".tif", "")
+                out_bands.append(band_completed)
 
-            tmp_dir = dirname(join(self.nc_output_dir, output_file))
-            for path, subdirs, files in walk(tmp_dir):
-                for file in files:
-                    cogtif_val = [
-                        'rio',
-                        'cogeo',
-                        'validate',
-                        file
-                        ]
-
-                    cog_name = str(join(tmp_dir, file))
-
-                    cogtif_val = [
-                        'rio',
-                        'cogeo',
-                        'validate',
-                        cog_name
-                        ]
-
-                    process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-                    cog_test = process.stdout
-                    cog_test = cog_test.replace("\n", "")
-
-                    valid_cog = cog_name + " is a valid cloud optimized GeoTIFF"
-                    self.assertEqual(cog_test, valid_cog)
-
-    def test_band_selection(self):
-        """
-        Verify the correct bands asked for by the user are being converted
-        """
-
-        var1 = 'gland'
-        var2 = 'fland'
-        var3 = 'sss_smap'
-
-        test_message = {
-            'identifier': 'job_id',
-            'stagedOutputLocations': ['s3://www.dummyurl.com'],
-            'meta': {
-                'nc_vars': '{}, {}, {}'.format(var1, var2, var3)
-            }
-        }
-
-        in_bands = test_message['meta']['nc_vars']
-        in_bands = in_bands.split(", ")
-        in_bands.sort()
-
-        for file in self.test_files:
-            output_file = "{}_{}".format(self._testMethodName, file)
-            netcdf_convert.netcdf_converter(
-                join(self.test_data_dir, file), join(self.nc_output_dir, output_file), in_bands)
-
-            tmp_dir = dirname(join(self.nc_output_dir, output_file))
-
-            out_bands = []
-            for path, subdirs, files in walk(tmp_dir):
-                for file in files:
-                    # test_band_selection_RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0_fland.tif
-                    # test_band_selection_RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0_sss_smap.tif
-                    # test_band_selection_RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0_gland.tif
-
-                    band_completed = file.split("4.0_")[-1].replace(".tif", "")
-                    out_bands.append(band_completed)
-
-            out_bands.sort()
-            self.assertEqual(in_bands, out_bands)
+    out_bands.sort()
+    assert in_bands == out_bands

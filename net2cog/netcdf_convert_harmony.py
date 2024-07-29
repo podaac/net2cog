@@ -13,17 +13,15 @@ import os
 import pathlib
 
 import harmony
-import harmony.util
-from harmony import BaseHarmonyAdapter
 
-from podaac.netcdf_converter import netcdf_convert
+from net2cog import netcdf_convert
 
 DATA_DIRECTORY_ENV = "DATA_DIRECTORY"
 
 
-class NetcdfConverterService(BaseHarmonyAdapter):
+class NetcdfConverterService(harmony.BaseHarmonyAdapter):
     """
-    See https://git.earthdata.nasa.gov/projects/HARMONY/repos/harmony-service-lib-py/browse
+    See https://github.com/nasa/harmony-service-lib-py
     for documentation and examples.
     """
 
@@ -59,8 +57,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
                 directory_name = os.path.splitext(os.path.basename(granule.local_filename))[0]
                 output_file_directory = os.path.join(self.job_data_dir,
                                                      f'converted_{directory_name}')
-                output_filename = f'{output_file_directory}/' \
-                                  f'{os.path.basename(granule.name)}'
+                output_filename = pathlib.Path(f'{output_file_directory}').joinpath(os.path.basename(granule.name))
                 self.logger.debug('output: %s', output_filename)
 
                 # Run the netcdf converter for the complete netcdf granule
@@ -68,7 +65,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
                     granule.local_filename, output_filename
                 )
                 current_progress = int(100 * i / len(granules))
-                next_progress = int(100 * (i+1) / len(granules))
+                next_progress = int(100 * (i + 1) / len(granules))
                 for cog in cogs_generated:
                     if message.isSynchronous:
                         self.completed_with_local_file(
