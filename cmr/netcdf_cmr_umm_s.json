@@ -36,11 +36,6 @@
       "ServiceSpecificTerm": "DATA REFORMATTING"
     }
   ],
-  "MetadataSpecification": {
-    "URL": "https://cdn.earthdata.nasa.gov/umm/service/v1.4",
-    "Name": "UMM-S",
-    "Version": "1.4"
-  },
   "ContactGroups": [
     {
       "Roles": [
@@ -68,5 +63,10 @@
       "Type": "VIEW RELATED INFORMATION",
       "Subtype": "GENERAL DOCUMENTATION"
     }
-  ]
+  ],
+    "MetadataSpecification": {
+        "URL": "https://cdn.earthdata.nasa.gov/umm/service/v1.5.2",
+        "Name": "UMM-S",
+        "Version": "1.5.2"
+    }
 }

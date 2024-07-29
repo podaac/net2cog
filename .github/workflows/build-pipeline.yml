@@ -370,7 +370,7 @@ jobs:
           pip install tenacity
           ${GITHUB_WORKSPACE}/.github/workflows/wait-for-pypi.py ${{needs.build.outputs.pyproject_name}}[harmony]==${{ needs.build.outputs.version }}
       - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
@@ -401,6 +401,5 @@ jobs:
         if: |
           github.ref == 'refs/heads/main'    ||
           startsWith(github.ref, 'refs/heads/release')
-        working-directory: deployment
         run: 
           echo "Deploy $CONTAINER_IMAGE_URI to $ENV"
