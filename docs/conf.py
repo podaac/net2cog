@@ -1,6 +1,8 @@
 import os
 import sys
 
+from _pytest.compat import importlib_metadata
+
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath(os.path.join(os.pardir, 'scripts')))
 
@@ -16,9 +18,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.pardir, 'scripts')))
 
 # -- Project information -----------------------------------------------------
 
-project = "service-netcdf-converter"
-author = "PO.DAAC"
-version = "0.0.1"
+distribution_name = 'net2cog'
+project = importlib_metadata.distribution(distribution_name).metadata['Name']
+author = importlib_metadata.distribution(distribution_name).metadata['Author']
+version = importlib_metadata.distribution(distribution_name).version
+release = version
 
 # -- General configuration ---------------------------------------------------
 
