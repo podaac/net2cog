@@ -401,6 +401,5 @@ jobs:
         if: |
           github.ref == 'refs/heads/main'    ||
           startsWith(github.ref, 'refs/heads/release')
-        working-directory: deployment
         run: 
           echo "Deploy $CONTAINER_IMAGE_URI to $ENV"
