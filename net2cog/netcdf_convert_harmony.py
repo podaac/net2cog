@@ -31,8 +31,8 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
     for documentation and examples.
     """
 
-    def __init__(self, message):
-        super().__init__(message)
+    def __init__(self, message, catalog=None, config=None):
+        super().__init__(message, catalog, config)
 
         self.data_dir = os.getenv(DATA_DIRECTORY_ENV, '/home/dockeruser/data')
         pathlib.Path(self.data_dir).mkdir(parents=True, exist_ok=True)
