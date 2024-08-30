@@ -21,6 +21,7 @@ from harmony.exceptions import HarmonyException
 from pystac import Asset
 
 from net2cog import netcdf_convert
+from net2cog.netcdf_convert import Net2CogError
 
 DATA_DIRECTORY_ENV = "DATA_DIRECTORY"
 
@@ -60,9 +61,9 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
         result = item.clone()
         result.assets = {}
         output_dir = self.job_data_dir
-
-        self.logger.info('Input item %s', json.dumps(item.to_dict()))
         try:
+            self.logger.info('Input item: %s', json.dumps(item.to_dict()))
+            self.logger.info('Input source: %s', source)
             # Get the data file
             asset = next(v for k, v in item.assets.items() if 'data' in (v.roles or []))
             self.logger.info('Downloading %s to %s', asset.href, output_dir)
@@ -74,7 +75,7 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
 
             # Generate output filename
             output_filename, output_file_ext = os.path.splitext(
-                harmony.adapter.util.generate_output_filename(input_filename, ext='tif'))
+                harmony.adapter.util.generate_output_filename(asset.href, ext='tif'))
             output_filename = f'{output_filename}_converted{output_file_ext}'
 
             # Determine variables that need processing
@@ -82,7 +83,7 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
             var_list = source.process('variables')
             if not isinstance(var_list, list):
                 var_list = [var_list]
-            if len(var_list) > 1:
+            if len(var_list) != 1:
                 raise HarmonyException(
                     'net2cog harmony adapter currently only supports processing one variable at a time. '
                     'Please specify a single variable in your Harmony request.')
@@ -90,10 +91,18 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
             self.logger.info('Processing variables %s', var_list)
 
             # Run the netcdf converter for the complete netcdf granule
-            cog_generated = next(iter(netcdf_convert.netcdf_converter(pathlib.Path(input_filename),
-                                                                      pathlib.Path(output_dir).joinpath(
-                                                                          output_filename),
-                                                                      var_list=var_list)), [])
+            try:
+                cog_generated = next(iter(netcdf_convert.netcdf_converter(pathlib.Path(input_filename),
+                                                                          pathlib.Path(output_dir).joinpath(
+                                                                              output_filename),
+                                                                          var_list=var_list)), [])
+            except Net2CogError as error:
+                raise HarmonyException(
+                    f'net2cog failed to convert {asset.title}: {error}') from error
+            except Exception as uncaught_exception:
+                raise HarmonyException(str(f'Uncaught error in net2cog. '
+                                           f'Notify net2cog service provider. '
+                                           f'Message: {uncaught_exception}')) from uncaught_exception
 
             # Stage the output file with a conventional filename
             self.logger.info('Generated COG %s', cog_generated)
@@ -113,10 +122,6 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
             # Return the STAC record
             self.logger.info('Processed item %s', json.dumps(result.to_dict()))
             return result
-        except Exception as uncaught_exception:
-            raise HarmonyException(str(f'Uncaught error in net2cog. '
-                                       f'Notify net2cog service provider. '
-                                       f'Message: {uncaught_exception}')) from uncaught_exception
         finally:
             # Clean up any intermediate resources
             shutil.rmtree(self.job_data_dir)
