@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - [issues/25](https://github.com/podaac/net2cog/issues/25): Converted harmony adapter to operate on STAC catalog
+- [issues/3](https://github.com/podaac/net2cog/issues/3): Improved error handling and updated test cases to use new-style harmony execution
 
 ## [0.3.0]
 ### Changed
