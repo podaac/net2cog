@@ -25,8 +25,18 @@
         ],
         "SupportedInputFormat": "NETCDF-4"
       }
-    ]
+    ],
+    "Subset": {
+        "VariableSubset": {
+            "AllowMultipleValues": true
+        }
+    }
   },
+  "OperationMetadata": [
+        {
+            "OperationName": "VARIABLE_SUBSETTING"
+        }
+    ],
   "AccessConstraints": "None",
   "ServiceKeywords": [
     {
