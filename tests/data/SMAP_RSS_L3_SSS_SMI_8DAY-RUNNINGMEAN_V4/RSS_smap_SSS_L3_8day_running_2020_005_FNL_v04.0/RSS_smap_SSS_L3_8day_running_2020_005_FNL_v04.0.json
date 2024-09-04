@@ -1,0 +1,38 @@
+{
+    "type": "Feature",
+    "stac_version": "1.0.0-beta.2",
+    "id": "RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0",
+    "properties": {
+        "start_datetime": "2001-01-01T01:01:01Z",
+        "end_datetime": "2002-02-02T02:02:02Z",
+        "datetime": null
+    },
+    "geometry": null,
+    "links": [
+        {
+            "rel": "root",
+            "href": "../catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "parent",
+            "href": "../catalog.json",
+            "type": "application/json"
+        }
+    ],
+    "assets": {
+        "data": {
+            "href": "!!REPLACED IN TEST CASE!!",
+            "title": "Example2",
+            "roles": [
+                "data"
+            ]
+        }
+    },
+    "bbox": [
+        -1,
+        -2,
+        3,
+        4
+    ]
+}

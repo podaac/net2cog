@@ -7,28 +7,34 @@ netcdf-convert.py
 Functions related to converting a NetCDF file to other formats.
 """
 
+import logging
 import os
 import pathlib
-from os.path import join as pjoin, basename, dirname, exists, splitext
 import subprocess
-from subprocess import check_call
-
-import logging
 import tempfile
+from os.path import join as pjoin, basename, dirname, exists, splitext
+from subprocess import check_call
 from typing import List
 
-import xarray as xr
 import rasterio
+import rioxarray  # noqa
+import xarray as xr
 from rasterio import CRS
-
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
-
-import rioxarray  # noqa
 from rioxarray.exceptions import DimensionError
 
 LOGGER = logging.getLogger(__name__)
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
+
+
+class Net2CogError(Exception):
+    """
+    Exception raised when an error occurs while converting a NetCDF file to COG
+    """
+
+    def __init__(self, msg):
+        super().__init__(msg)
 
 
 def run_command(command, work_dir):
@@ -188,7 +194,10 @@ def netcdf_converter(input_nc_file: pathlib.Path, output_cog_pathname: pathlib.P
             # xds_reversed = xds.reindex(lat=xds.lat[::-1])
             LOGGER.info("Writing COG to %s", basename(gtiff_fname))
             if var_list:
-                xds = xds[var_list]
+                try:
+                    xds = xds[var_list]
+                except KeyError as error:
+                    raise Net2CogError(f"Variable {error} not found in dataset") from error
             return _write_cogtiff(gtiff_fname, xds)
         LOGGER.error("%s: NetCDF file does not contain spatial dimensions such as lat / lon "
                      "or x / y", netcdf_file)

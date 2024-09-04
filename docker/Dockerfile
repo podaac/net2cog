@@ -15,9 +15,11 @@ FROM python:3.10-slim
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
     gcc \
+    g++ \
     libnetcdf-dev \
     libhdf5-dev \
     hdf5-helpers \
+    libgdal-dev \
     && pip3 install --upgrade pip \
     && pip3 install cython \
     && apt-get clean
@@ -25,8 +27,8 @@ RUN apt-get update \
 # Create a new user
 RUN adduser --quiet --disabled-password --shell /bin/sh --home /home/dockeruser --gecos "" --uid 1000 dockeruser
 USER dockeruser
-ENV HOME /home/dockeruser
-ENV PYTHONPATH "${PYTHONPATH}:/home/dockeruser/.local/bin"
+ENV HOME=/home/dockeruser
+ENV PYTHONPATH="${PYTHONPATH}:/home/dockeruser/.local/bin"
 ENV PATH="/home/dockeruser/.local/bin:${PATH}"
 
 # The 'SOURCE' argument is what will be used in 'pip install'.
@@ -43,7 +45,7 @@ WORKDIR /worker
 
 COPY --chown=dockeruser $DIST_PATH $DIST_PATH
 USER dockeruser
-RUN pip3 install --no-cache-dir --force --user --index-url https://pypi.org/simple/ --extra-index-url https://test.pypi.org/simple/ $SOURCE \
+RUN pip install --no-cache-dir --force --user --index-url https://pypi.org/simple/ --extra-index-url https://test.pypi.org/simple/ $SOURCE \
     && rm -rf $DIST_PATH
 
 COPY --chown=dockeruser ./docker/docker-entrypoint.sh docker-entrypoint.sh
