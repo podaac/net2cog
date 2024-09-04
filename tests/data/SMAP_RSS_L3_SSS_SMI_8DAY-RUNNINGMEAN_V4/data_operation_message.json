@@ -9,19 +9,24 @@
   "requestId": "0001111-2222-3333-4444-5555666677777",
   "sources": [
     {
-      "collection": "C0001-EXAMPLE",
+      "collection": "C1940468263-POCLOUD",
       "variables": [
         {
-          "id": "V0001-EXAMPLE",
-          "name": "ExampleVar",
-          "fullPath": "example/group/path/ExampleVar"
+          "id": "V2093907958-POCLOUD",
+          "name": "sss_smap",
+          "fullPath": "sss_smap"
         }
       ],
       "granules": [
         {
           "id": "RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0",
           "name": "Example2",
-          "url": "file:///home/tests/data/RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc"
+          "url": "!!REPLACED IN TEST CASE!!",
+          "temporal": {
+            "start": "2001-01-01T01:01:01Z",
+            "end": "2002-02-02T02:02:02Z"
+          },
+          "bbox": [-1, -2, 3, 4]
         }
       ]
     }
