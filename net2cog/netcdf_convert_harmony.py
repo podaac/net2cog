@@ -9,12 +9,19 @@ netcdf_convert_harmony.py
 Implementation of harmony-service-lib that invokes the netcdf converter.
 """
 import argparse
+import json
 import os
 import pathlib
+import shutil
+import tempfile
 
 import harmony
+import pystac
+from harmony.exceptions import HarmonyException
+from pystac import Asset
 
 from net2cog import netcdf_convert
+from net2cog.netcdf_convert import Net2CogError
 
 DATA_DIRECTORY_ENV = "DATA_DIRECTORY"
 
@@ -25,70 +32,99 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
     for documentation and examples.
     """
 
-    def __init__(self, message):
-        super().__init__(message)
+    def __init__(self, message, catalog=None, config=None):
+        super().__init__(message, catalog, config)
 
         self.data_dir = os.getenv(DATA_DIRECTORY_ENV, '/home/dockeruser/data')
-        self.job_data_dir = os.path.join(self.data_dir, message.requestId)
+        pathlib.Path(self.data_dir).mkdir(parents=True, exist_ok=True)
+
         # Create temp directory
-        pathlib.Path(self.job_data_dir).mkdir(parents=True, exist_ok=True)
+        self.job_data_dir = tempfile.mkdtemp(prefix=message.requestId, dir=self.data_dir)
 
-    def invoke(self):
-        """Run the service on the message contained in `self.message`.
-        Fetches data, runs the service, puts the result in a file,
-        calls back to Harmony, and cleans up after itself.
+    def process_item(self, item: pystac.Item, source: harmony.message.Source) -> pystac.Item:
         """
+        Performs net2cog on input STAC Item's data, returning
+        an output STAC item
 
-        logger = self.logger
-        message = self.message
+        Parameters
+        ----------
+        item : pystac.Item
+            the item that should be coggified
+        source : harmony.message.Source
+            the input source defining the item
 
-        logger.info("Received message %s", message)
-
+        Returns
+        -------
+        pystac.Item
+            a STAC item describing the output
+        """
+        result = item.clone()
+        result.assets = {}
+        output_dir = self.job_data_dir
         try:
-            # Limit to the first granule.  See note in method documentation
-            granules = message.granules
-            if message.isSynchronous:
-                granules = granules[:1]
+            self.logger.info('Input item: %s', json.dumps(item.to_dict()))
+            self.logger.info('Input source: %s', source)
+            # Get the data file
+            asset = next(v for k, v in item.assets.items() if 'data' in (v.roles or []))
+            self.logger.info('Downloading %s to %s', asset.href, output_dir)
+            input_filename = harmony.adapter.util.download(asset.href,
+                                                           output_dir,
+                                                           logger=self.logger,
+                                                           access_token=self.message.accessToken,
+                                                           cfg=self.config)
 
-            for i, granule in enumerate(granules):
-                self.download_granules([granule])
+            # Generate output filename
+            output_filename, output_file_ext = os.path.splitext(
+                harmony.adapter.util.generate_output_filename(asset.href, ext='tif'))
+            output_filename = f'{output_filename}_converted{output_file_ext}'
 
-                self.logger.info('local_filename = %s', granule.local_filename)
-                directory_name = os.path.splitext(os.path.basename(granule.local_filename))[0]
-                output_file_directory = os.path.join(self.job_data_dir,
-                                                     f'converted_{directory_name}')
-                output_filename = pathlib.Path(f'{output_file_directory}').joinpath(os.path.basename(granule.name))
-                self.logger.debug('output: %s', output_filename)
+            # Determine variables that need processing
+            self.logger.info('Generating COG(s) for %s output will be saved to %s', input_filename, output_filename)
+            var_list = source.process('variables')
+            if not isinstance(var_list, list):
+                var_list = [var_list]
+            if len(var_list) != 1:
+                raise HarmonyException(
+                    'net2cog harmony adapter currently only supports processing one variable at a time. '
+                    'Please specify a single variable in your Harmony request.')
+            var_list = list(map(lambda var: var.name, var_list))
+            self.logger.info('Processing variables %s', var_list)
 
-                # Run the netcdf converter for the complete netcdf granule
-                cogs_generated = netcdf_convert.netcdf_converter(
-                    granule.local_filename, output_filename
-                )
-                current_progress = int(100 * i / len(granules))
-                next_progress = int(100 * (i + 1) / len(granules))
-                for cog in cogs_generated:
-                    if message.isSynchronous:
-                        self.completed_with_local_file(
-                            cog,
-                            remote_filename=os.path.basename(cog),
-                            mime="tiff"
-                        )
-                    else:
-                        self.async_add_local_file_partial_result(
-                            cog,
-                            remote_filename=os.path.basename(cog),
-                            title=granule.id,
-                            progress=current_progress if cog != cogs_generated[-1] else next_progress,
-                            mime="tiff"
-                        )
-            if not message.isSynchronous:
-                self.async_completed_successfully()
+            # Run the netcdf converter for the complete netcdf granule
+            try:
+                cog_generated = next(iter(netcdf_convert.netcdf_converter(pathlib.Path(input_filename),
+                                                                          pathlib.Path(output_dir).joinpath(
+                                                                              output_filename),
+                                                                          var_list=var_list)), [])
+            except Net2CogError as error:
+                raise HarmonyException(
+                    f'net2cog failed to convert {asset.title}: {error}') from error
+            except Exception as uncaught_exception:
+                raise HarmonyException(str(f'Uncaught error in net2cog. '
+                                           f'Notify net2cog service provider. '
+                                           f'Message: {uncaught_exception}')) from uncaught_exception
 
-        except Exception as ex:  # pylint: disable=W0703
-            logger.exception(ex)
-            self.completed_with_error('An unexpected error occurred')
+            # Stage the output file with a conventional filename
+            self.logger.info('Generated COG %s', cog_generated)
+            staged_filename = os.path.basename(cog_generated)
+            url = harmony.adapter.util.stage(cog_generated,
+                                             staged_filename,
+                                             pystac.MediaType.COG,
+                                             location=self.message.stagingLocation,
+                                             logger=self.logger,
+                                             cfg=self.config)
+            self.logger.info('Staged %s to %s', cog_generated, url)
+
+            # Update the STAC record
+            result.assets['visual'] = Asset(url, title=staged_filename, media_type=pystac.MediaType.COG,
+                                            roles=['visual'])
+
+            # Return the STAC record
+            self.logger.info('Processed item %s', json.dumps(result.to_dict()))
+            return result
         finally:
-            self.cleanup()
+            # Clean up any intermediate resources
+            shutil.rmtree(self.job_data_dir)
 
 
 def main():
@@ -100,7 +136,7 @@ def main():
     None
 
     """
-    parser = argparse.ArgumentParser(prog='podaac-netcdf-converter',
+    parser = argparse.ArgumentParser(prog='net2cog_harmony',
                                      description='Run the netcdf converter service')
     harmony.setup_cli(parser)
     args = parser.parse_args()
