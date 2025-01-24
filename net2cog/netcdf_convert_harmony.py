@@ -15,10 +15,13 @@ import pathlib
 import shutil
 import tempfile
 
-import harmony
+import harmony_service_lib
 import pystac
-from harmony.exceptions import HarmonyException
-from pystac import Asset
+from harmony_service_lib import BaseHarmonyAdapter
+from harmony_service_lib.exceptions import HarmonyException
+from harmony_service_lib.message import Source
+from harmony_service_lib.util import download, stage
+from pystac import Asset, Item
 
 from net2cog import netcdf_convert
 from net2cog.netcdf_convert import Net2CogError
@@ -26,7 +29,7 @@ from net2cog.netcdf_convert import Net2CogError
 DATA_DIRECTORY_ENV = "DATA_DIRECTORY"
 
 
-class NetcdfConverterService(harmony.BaseHarmonyAdapter):
+class NetcdfConverterService(BaseHarmonyAdapter):
     """
     See https://github.com/nasa/harmony-service-lib-py
     for documentation and examples.
@@ -41,16 +44,16 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
         # Create temp directory
         self.job_data_dir = tempfile.mkdtemp(prefix=message.requestId, dir=self.data_dir)
 
-    def process_item(self, item: pystac.Item, source: harmony.message.Source) -> pystac.Item:
+    def process_item(self, input_item: pystac.Item, source: Source) -> pystac.Item:
         """
         Performs net2cog on input STAC Item's data, returning
         an output STAC item
 
         Parameters
         ----------
-        item : pystac.Item
+        input_item : pystac.Item
             the item that should be coggified
-        source : harmony.message.Source
+        source : harmony_service_lib.message.Source
             the input source defining the item
 
         Returns
@@ -58,44 +61,44 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
         pystac.Item
             a STAC item describing the output
         """
-        result = item.clone()
-        result.assets = {}
         output_dir = self.job_data_dir
         try:
-            self.logger.info('Input item: %s', json.dumps(item.to_dict()))
+            self.logger.info('Input item: %s', json.dumps(input_item.to_dict()))
             self.logger.info('Input source: %s', source)
             # Get the data file
-            asset = next(v for k, v in item.assets.items() if 'data' in (v.roles or []))
+            asset = next(v for k, v in input_item.assets.items() if 'data' in (v.roles or []))
             self.logger.info('Downloading %s to %s', asset.href, output_dir)
-            input_filename = harmony.adapter.util.download(asset.href,
-                                                           output_dir,
-                                                           logger=self.logger,
-                                                           access_token=self.message.accessToken,
-                                                           cfg=self.config)
+            input_filename = download(
+                asset.href,
+                output_dir,
+                logger=self.logger,
+                access_token=self.message.accessToken,
+                cfg=self.config
+            )
 
-            # Generate output filename
-            output_filename, output_file_ext = os.path.splitext(
-                harmony.adapter.util.generate_output_filename(asset.href, ext='tif'))
-            output_filename = f'{output_filename}_converted{output_file_ext}'
+            # Rename the downloaded output from a SHA256 hash to the basename
+            # of the source data file
+            source_asset_basename = os.path.basename(asset.href)
+            os.rename(input_filename, os.path.join(output_dir, source_asset_basename))
+            input_filename = os.path.join(output_dir, source_asset_basename)
 
             # Determine variables that need processing
-            self.logger.info('Generating COG(s) for %s output will be saved to %s', input_filename, output_filename)
             var_list = source.process('variables')
-            if not isinstance(var_list, list):
-                var_list = [var_list]
-            if len(var_list) != 1:
-                raise HarmonyException(
-                    'net2cog harmony adapter currently only supports processing one variable at a time. '
-                    'Please specify a single variable in your Harmony request.')
-            var_list = list(map(lambda var: var.name, var_list))
-            self.logger.info('Processing variables %s', var_list)
+
+            if var_list:
+                var_list = list(map(lambda var: var.name, var_list))
+                self.logger.info('Processing variables %s', var_list)
+            else:
+                self.logger.info('Processing all variables.')
 
             # Run the netcdf converter for the complete netcdf granule
             try:
-                cog_generated = next(iter(netcdf_convert.netcdf_converter(pathlib.Path(input_filename),
-                                                                          pathlib.Path(output_dir).joinpath(
-                                                                              output_filename),
-                                                                          var_list=var_list)), [])
+                generated_cogs = netcdf_convert.netcdf_converter(
+                    pathlib.Path(input_filename),
+                    pathlib.Path(output_dir),
+                    var_list,
+                    self.logger,
+                )
             except Net2CogError as error:
                 raise HarmonyException(
                     f'net2cog failed to convert {asset.title}: {error}') from error
@@ -104,27 +107,57 @@ class NetcdfConverterService(harmony.BaseHarmonyAdapter):
                                            f'Notify net2cog service provider. '
                                            f'Message: {uncaught_exception}')) from uncaught_exception
 
-            # Stage the output file with a conventional filename
-            self.logger.info('Generated COG %s', cog_generated)
-            staged_filename = os.path.basename(cog_generated)
-            url = harmony.adapter.util.stage(cog_generated,
-                                             staged_filename,
-                                             pystac.MediaType.COG,
-                                             location=self.message.stagingLocation,
-                                             logger=self.logger,
-                                             cfg=self.config)
-            self.logger.info('Staged %s to %s', cog_generated, url)
-
-            # Update the STAC record
-            result.assets['visual'] = Asset(url, title=staged_filename, media_type=pystac.MediaType.COG,
-                                            roles=['visual'])
-
-            # Return the STAC record
-            self.logger.info('Processed item %s', json.dumps(result.to_dict()))
-            return result
+            return self.stage_output_and_create_output_stac(generated_cogs, input_item)
         finally:
             # Clean up any intermediate resources
             shutil.rmtree(self.job_data_dir)
+
+    def stage_output_and_create_output_stac(self, output_files: list[str], input_stac_item: Item) -> Item:
+        """Iterate through all generated COGs and stage the results in S3. Also
+        add a unique pystac.Asset for each COG to the pystac.Item returned to
+        Harmony.
+
+        Parameters
+        ----------
+        output_files : list[str]
+            the filenames of generated COGs to be staged
+        input_stac_item : pystac.Item
+            the input STAC for the request. This is the basis of the output
+            STAC, which will replace the pystac.Assets with generated COGs.
+
+        Returns
+        -------
+        pystac.Item
+            a STAC item describing the output. If there are multiple variables,
+            this STAC item will have multiple assets.
+
+        """
+
+        output_stac_item = input_stac_item.clone()
+        output_stac_item.assets = {}
+
+        for output_file in output_files:
+            output_basename = os.path.basename(output_file)
+
+            staged_url = stage(
+                output_file,
+                output_basename,
+                pystac.MediaType.COG,
+                location=self.message.stagingLocation,
+                logger=self.logger,
+                cfg=self.config
+            )
+            self.logger.info('Staged %s to %s', output_file, staged_url)
+
+            # Each asset needs a unique key, so the filename of the COG is used
+            output_stac_item.assets[output_basename] = Asset(
+                staged_url,
+                title=output_basename,
+                media_type=pystac.MediaType.COG,
+                roles=['visual'],
+            )
+
+        return output_stac_item
 
 
 def main():
@@ -138,9 +171,9 @@ def main():
     """
     parser = argparse.ArgumentParser(prog='net2cog_harmony',
                                      description='Run the netcdf converter service')
-    harmony.setup_cli(parser)
+    harmony_service_lib.setup_cli(parser)
     args = parser.parse_args()
-    if harmony.is_harmony_cli(args):
-        harmony.run_cli(parser, args, NetcdfConverterService)
+    if harmony_service_lib.is_harmony_cli(args):
+        harmony_service_lib.run_cli(parser, args, NetcdfConverterService)
     else:
         parser.error("Only --harmony CLIs are supported")
