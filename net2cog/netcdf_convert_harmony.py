@@ -145,7 +145,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
             output_basename = generate_output_filename(
                 source_asset_basename,
                 ext='tif',
-                variable_subset=[splitext(output_file)[0]],
+                variable_subset=[splitext(basename(output_file))[0]],
                 is_reformatted=True,
             )
 
