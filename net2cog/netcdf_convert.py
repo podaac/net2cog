@@ -70,7 +70,9 @@ def _write_cogtiff(
 
     Notes
     -----
-    Assumption that 0 is always on the prime meridian/equator.
+    - Assumption that 0 is always on the prime meridian/equator.
+    - The output name for converted GeoTIFFs is `<variable name>.tif`, with any
+      slashes replaced with underscores.
     """
 
     logger.debug("NetCDF Var: %s", variable_name)
@@ -79,7 +81,7 @@ def _write_cogtiff(
         logger.debug(f"Variable {variable_name} is excluded. Will not produce COG")
         return None
 
-    output_basename = f'{variable_name}.tif'
+    output_basename = f'{variable_name}.tif'.replace('/', '_')
     output_file_name = path_join(output_directory, output_basename)
 
     with TemporaryDirectory() as tempdir:
