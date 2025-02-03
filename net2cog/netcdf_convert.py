@@ -17,7 +17,6 @@ from typing import List
 import rasterio
 import rioxarray  # noqa
 import xarray as xr
-from harmony_service_lib.util import generate_output_filename
 from rasterio import CRS
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
@@ -31,8 +30,10 @@ class Net2CogError(Exception):
     Exception raised when an error occurs while converting a NetCDF file to COG
     """
 
-    def __init__(self, msg):
-        super().__init__(msg)
+    def __init__(self, variable_name: str, error_message: str):
+        super().__init__(
+            f'Variable {variable_name} cannot be converted to tif: {error_message}'
+        )
 
 
 def _rioxr_swapdims(netcdf_xarray):
@@ -46,7 +47,6 @@ def _write_cogtiff(
     output_directory: str,
     nc_xarray: xr.Dataset,
     variable_name: str,
-    input_file_basename: str,
     logger: Logger,
 ) -> str | None:
     """
@@ -64,10 +64,9 @@ def _write_cogtiff(
     nc_xarray : xarray.Dataset
         xarray dataset loaded from NetCDF file
     variable_name: str
-        Name of the variable as passed in to Harmony.
-    input_file_basename: str
-        String representation of the basename of the NetCDF-4 file input to
-        the service. This is used to construct the output file name.
+        Name of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
 
     Notes
     -----
@@ -80,29 +79,20 @@ def _write_cogtiff(
         logger.debug(f"Variable {variable_name} is excluded. Will not produce COG")
         return None
 
-    output_basename = generate_output_filename(
-        input_file_basename,
-        ext='tif',
-        variable_subset=[variable_name],
-        is_reformatted=True,
-    )
+    output_basename = f'{variable_name}.tif'
     output_file_name = path_join(output_directory, output_basename)
 
     with TemporaryDirectory() as tempdir:
         temp_file_name = path_join(tempdir, output_basename)
 
-        # copy to a tempfolder
-        # out_fname = out_f_name + '_' + var + '.tif'
-        # temp_fname = path_join(tempdir, basename(out_fname))
-
         try:
             nc_xarray[variable_name].rio.to_raster(temp_file_name)
         except KeyError as error:
             # Occurs when trying to locate a variable that is not in the Dataset
-            raise Net2CogError(error) from error
+            raise Net2CogError(variable_name, error) from error
         except LookupError as err:
             logger.info("Variable %s cannot be converted to tif: %s", variable_name, err)
-            return None
+            raise Net2CogError(variable_name, err) from err
         except DimensionError as dmerr:
             try:
                 logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
@@ -110,10 +100,10 @@ def _write_cogtiff(
                 nc_xarray_tmp[variable_name].rio.to_raster(temp_file_name)
             except RuntimeError as runerr:
                 logger.info("Variable %s cannot be converted to tif: %s", variable_name, runerr)
-                return None
+                raise Net2CogError(variable_name, runerr) from runerr
             except Exception as aerr:  # pylint: disable=broad-except
                 logger.info("Variable %s cannot be converted to tif: %s", variable_name, aerr)
-                return None
+                raise Net2CogError(variable_name, aerr) from aerr
 
         # Option to add additional GDAL config settings
         # config = dict(GDAL_NUM_THREADS="ALL_CPUS", GDAL_TIFF_OVR_BLOCKSIZE="128")
@@ -159,8 +149,10 @@ def netcdf_converter(
         staging in S3.
     var_list : str | None
         List of variable names to be converted to various single band cogs,
-        ex: ['gland', 'fland', 'sss_smap']. If a Harmony request asks for "all"
-        variables, the input value will be an empty list.
+        ex: ['gland', 'fland', 'sss_smap']. If this list is empty, it is assumed
+        that all variables have been requested.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
 
     Notes
     -----
@@ -189,7 +181,7 @@ def netcdf_converter(
                 var_list = list(xds.data_vars.keys())
 
             output_files = [
-                _write_cogtiff(output_directory, xds, variable_name, basename(netcdf_file), logger)
+                _write_cogtiff(output_directory, xds, variable_name, logger)
                 for variable_name in var_list
             ]
             # Remove None returns, e.g., for excluded variables

@@ -14,13 +14,14 @@ import os
 import pathlib
 import shutil
 import tempfile
+from os.path import basename, join as path_join, splitext
 
 import harmony_service_lib
 import pystac
 from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.exceptions import HarmonyException
 from harmony_service_lib.message import Source
-from harmony_service_lib.util import download, stage
+from harmony_service_lib.util import download, generate_output_filename, stage
 from pystac import Asset, Item
 
 from net2cog import netcdf_convert
@@ -76,12 +77,6 @@ class NetcdfConverterService(BaseHarmonyAdapter):
                 cfg=self.config
             )
 
-            # Rename the downloaded output from a SHA256 hash to the basename
-            # of the source data file
-            source_asset_basename = os.path.basename(asset.href)
-            os.rename(input_filename, os.path.join(output_dir, source_asset_basename))
-            input_filename = os.path.join(output_dir, source_asset_basename)
-
             # Determine variables that need processing
             var_list = source.process('variables')
 
@@ -107,12 +102,21 @@ class NetcdfConverterService(BaseHarmonyAdapter):
                                            f'Notify net2cog service provider. '
                                            f'Message: {uncaught_exception}')) from uncaught_exception
 
-            return self.stage_output_and_create_output_stac(generated_cogs, input_item)
+            return self.stage_output_and_create_output_stac(
+                basename(asset.href),
+                generated_cogs,
+                input_item
+            )
         finally:
             # Clean up any intermediate resources
             shutil.rmtree(self.job_data_dir)
 
-    def stage_output_and_create_output_stac(self, output_files: list[str], input_stac_item: Item) -> Item:
+    def stage_output_and_create_output_stac(
+        self,
+        source_asset_basename: str,
+        output_files: list[str],
+        input_stac_item: Item
+    ) -> Item:
         """Iterate through all generated COGs and stage the results in S3. Also
         add a unique pystac.Asset for each COG to the pystac.Item returned to
         Harmony.
@@ -120,7 +124,8 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         Parameters
         ----------
         output_files : list[str]
-            the filenames of generated COGs to be staged
+            the file names of generated COGs to be staged. It is assumed that
+            the file names adhere to the convention of `<variable_name>.tif`.
         input_stac_item : pystac.Item
             the input STAC for the request. This is the basis of the output
             STAC, which will replace the pystac.Assets with generated COGs.
@@ -137,7 +142,12 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         output_stac_item.assets = {}
 
         for output_file in output_files:
-            output_basename = os.path.basename(output_file)
+            output_basename = generate_output_filename(
+                source_asset_basename,
+                ext='tif',
+                variable_subset=[splitext(output_file)[0]],
+                is_reformatted=True,
+            )
 
             staged_url = stage(
                 output_file,
