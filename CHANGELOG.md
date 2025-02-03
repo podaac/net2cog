@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- [issues/32](https://github.com/podaac/net2cog/issues/32): Added capability to support multiple variables requests, both from explicitly requesting multiple variables, or requestion "all" variables. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/32](https://github.com/podaac/net2cog/issues/32): Added capability to support multiple variables requests, both from explicitly requesting multiple variables, or requesting "all" variables. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 
 ## [0.4.0]
 ### Changed
