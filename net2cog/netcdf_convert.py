@@ -43,6 +43,7 @@ def _rioxr_swapdims(netcdf_xarray):
     return netcdf_xarray.swap_dims({'lat': 'y', 'lon': 'x'})
 
 
+# pylint: disable=R0914
 def _write_cogtiff(
     output_directory: str,
     nc_xarray: xr.Dataset,
@@ -55,7 +56,7 @@ def _write_cogtiff(
 
     Parameters
     ----------
-    out_directory : str
+    output_directory : str
         Path to temporary directory where output GeoTIFFs will be stored before
         being staged in S3.
         example :/home/dockeruser/converter/podaac/netcdf_converter/temp/

@@ -14,7 +14,7 @@ import os
 import pathlib
 import shutil
 import tempfile
-from os.path import basename, join as path_join, splitext
+from os.path import basename, splitext
 
 import harmony_service_lib
 import pystac
@@ -45,14 +45,14 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         # Create temp directory
         self.job_data_dir = tempfile.mkdtemp(prefix=message.requestId, dir=self.data_dir)
 
-    def process_item(self, input_item: pystac.Item, source: Source) -> pystac.Item:
+    def process_item(self, item: pystac.Item, source: Source) -> pystac.Item:
         """
         Performs net2cog on input STAC Item's data, returning
         an output STAC item
 
         Parameters
         ----------
-        input_item : pystac.Item
+        item : pystac.Item
             the item that should be coggified
         source : harmony_service_lib.message.Source
             the input source defining the item
@@ -64,10 +64,10 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         """
         output_dir = self.job_data_dir
         try:
-            self.logger.info('Input item: %s', json.dumps(input_item.to_dict()))
+            self.logger.info('Input item: %s', json.dumps(item.to_dict()))
             self.logger.info('Input source: %s', source)
             # Get the data file
-            asset = next(v for k, v in input_item.assets.items() if 'data' in (v.roles or []))
+            asset = next(v for k, v in item.assets.items() if 'data' in (v.roles or []))
             self.logger.info('Downloading %s to %s', asset.href, output_dir)
             input_filename = download(
                 asset.href,
@@ -105,7 +105,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
             return self.stage_output_and_create_output_stac(
                 basename(asset.href),
                 generated_cogs,
-                input_item
+                item
             )
         finally:
             # Clean up any intermediate resources
