@@ -10,7 +10,7 @@
         },
         {
             "rel": "item",
-            "href": "./RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0/RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.json",
+            "href": "./RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.json",
             "type": "application/json"
         }
     ]
