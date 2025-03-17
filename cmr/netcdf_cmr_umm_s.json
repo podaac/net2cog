@@ -28,7 +28,7 @@
     ],
     "Subset": {
         "VariableSubset": {
-            "AllowMultipleValues": false
+            "AllowMultipleValues": true
         }
     }
   },
