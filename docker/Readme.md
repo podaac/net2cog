@@ -39,8 +39,17 @@ and the `SOURCE` build arg should be set to the path to the wheel file.
 Example:
 
 ```shell script
-docker build -f docker/Dockerfile --build-arg SOURCE="dist/net2cog-1.1.0a1-py3-none-any.whl[harmony]" --build-arg DIST_PATH="dist/" .
+docker build -f docker/Dockerfile -t ghcr.io/podaac/net2cog:SIT \
+    --build-arg SOURCE="dist/net2cog-1.1.0a1-py3-none-any.whl[harmony]" \
+    --build-arg DIST_PATH="dist/" .
 ```
+
+To use with Harmony in a Box, the output image must be tagged, using the `-t`
+flag, with a string that matches the `NET2COG_IMAGE` environment variable
+used by Harmony. The default value for this environment variable in Harmony is
+`ghcr.io/podaac/net2cog:SIT`, as specified in
+[harmony/services/harmony/env-defaults](https://github.com/nasa/harmony/blob/main/services/harmony/env-defaults). This can be overwritten in your local `.env` file
+for Harmony.
 
 ## Running
 
