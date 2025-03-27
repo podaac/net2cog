@@ -148,6 +148,25 @@ def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
         )
 
 
+def test_excluded_variables_not_converted(temp_dir, logger, smap_file):
+    """Ensure variables that should be excluded are not converted."""
+    test_file = pathlib.Path(temp_dir, smap_file)
+
+    requested_variables = ['gland', 'lat', 'lon', 'time']
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        requested_variables,
+        logger
+    )
+
+    # Only gland should produce output from the input list of variables:
+    assert len(results) == 1, 'Incorrect number of output file names.'
+    assert pathlib.Path(results[0]).is_file(), 'No file created.'
+    assert basename(results[0]) == 'gland.tif', 'Incorrect output file name'
+
+
 @pytest.mark.parametrize(
     'dimensions',
     [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y']],
