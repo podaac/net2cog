@@ -244,17 +244,18 @@ def netcdf_converter(
             # the `xarray.DataTree`.
             var_list = get_all_data_variables(input_datatree)
 
-        output_files = [
+        raw_output_files = [
             _write_cogtiff(output_directory, input_datatree, variable_name, logger)
             for variable_name in var_list
         ]
         # Remove None returns, e.g., for excluded variables
-        return [
+        output_files = [
             output_file
-            for output_file in output_files
+            for output_file in raw_output_files
             if output_file is not None
         ]
-
     else:
         logger.info("Not a NetCDF file; Skipped file: %s", netcdf_file)
-        return []
+        output_files = []
+
+    return output_files
