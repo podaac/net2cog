@@ -131,6 +131,23 @@ def test_unknown_band_selection(in_bands, temp_dir, smap_file, logger):
         )
 
 
+def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
+    """Verify a request for a non-spatial variable raises expected exception."""
+    test_file = pathlib.Path(temp_dir, nested_file)
+    expected_exception = (
+        'EASE2_global_projection does not have spatial dimensions '
+        'such as lat / lon or x / y'
+    )
+
+    with pytest.raises(Net2CogError, match=expected_exception):
+        netcdf_converter(
+            test_file,
+            pathlib.Path(temp_dir),
+            ['EASE2_global_projection'],
+            logger
+        )
+
+
 @pytest.mark.parametrize(
     'dimensions',
     [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y']],
