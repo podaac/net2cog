@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0]
 ### Changed
 - [issues/37](https://github.com/podaac/net2cog/issues/37): Migrated to use `xarray.DataTree`, in order to provide support for granules with hierarchical structure. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/37](https://github.com/podaac/net2cog/issues/37): Updated output file format in UMM-S record to "GEOTIFF", to ensure file format selection can be made in Earthdata Search.
 
 ## [0.5.0]
 ### Changed
