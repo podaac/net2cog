@@ -95,7 +95,7 @@ def _write_cogtiff(
                 raise Net2CogError(
                     variable_path,
                     f'{variable_path} does not have spatial dimensions such as '
-                    'lat / lon or x / y'
+                    'lat / lon or x / y',
                 )
             nc_xarray[variable_path].rio.to_raster(temp_file_name)
         except KeyError as error:
@@ -191,12 +191,14 @@ def has_spatial_dimensions(variable: xr.DataArray | xr.DataTree) -> bool:
             * {"lon", "lat"}
             * {"longitude", "latitude"}
             * {"x", "y"}
+            * {"x-dim", "y-dim"}
 
     """
     return (
         {"lon", "lat"}.issubset(set(variable.dims))
         or {"longitude", "latitude"}.issubset(set(variable.dims))
         or {"x", "y"}.issubset(set(variable.dims))
+        or {"x-dim", "y-dim"}.issubset(set(variable.dims))
     )
 
 
