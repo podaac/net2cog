@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [0.6.0]
 ### Changed
 - [issues/37](https://github.com/podaac/net2cog/issues/37): Migrated to use `xarray.DataTree`, in order to provide support for granules with hierarchical structure. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
