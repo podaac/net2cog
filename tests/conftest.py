@@ -34,6 +34,18 @@ def smap_file_basename():
     return 'RSS_smap_SSS_L3_8day_running_2020_005_FNL_v04.0.nc'
 
 
+@fixture(scope='session')
+def nested_collection():
+    """Name of collection with a nested variable, used as a subdirectory in tests/data."""
+    return 'SPL4CMDL_007'
+
+
+@fixture(scope='session')
+def nested_file_basename():
+    """Basename of the SPL4CMDL file used as test input."""
+    return 'SMAP_L4_C_mdl_20150403T000000_Vv7042_001.h5'
+
+
 @fixture(scope='function')
 def temp_dir():
     """A temporary directory used for each test, to ensure tests are isolated."""
@@ -117,6 +129,22 @@ def smap_item(data_dir, temp_dir, smap_collection, smap_file):
         json.dump(stac_item_json, file_handler, indent=2)
 
     return temporary_stac_item_file
+
+
+@fixture(scope='function')
+def nested_file(data_dir, temp_dir, nested_collection, nested_file_basename):
+    """Path to SPL4CMDL HDF-5 input file, copied into the test directory.
+
+    This file is already subsetted to be a bounding box region of a single
+    science variable (NEE/nee_mean) to reduce file size in the repository.
+
+    """
+    temporary_data_file = Path(join(temp_dir, nested_file_basename))
+    copyfile(
+        join(data_dir, nested_collection, nested_file_basename),
+        temporary_data_file,
+    )
+    return temporary_data_file
 
 
 @fixture(scope='function')

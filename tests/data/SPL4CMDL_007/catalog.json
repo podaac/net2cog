@@ -1,0 +1,17 @@
+{
+    "id": "test",
+    "stac_version": "1.0.0-beta.2",
+    "description": "test",
+    "links": [
+        {
+            "rel": "root",
+            "href": "./catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "item",
+            "href": "./SMAP_L4_C_mdl_20150403T000000_Vv7042_001.json",
+            "type": "application/json"
+        }
+    ]
+}
