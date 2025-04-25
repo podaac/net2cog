@@ -210,8 +210,8 @@ jobs:
           steps.rc.conclusion == 'success'      ||
           steps.release.conclusion == 'success'
         run: |
-          git config user.name "${GITHUB_ACTOR}"
-          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git config user.name "podaac-cicd[bot]"
+          git config user.email "93616935+podaac-cicd[bot]@users.noreply.github.com"
           git commit -am "/version ${{ env.software_version }}"
           git push
       - name: Push Tag
@@ -220,8 +220,8 @@ jobs:
           steps.rc.conclusion == 'success'      ||
           steps.release.conclusion == 'success'
         run: |
-          git config user.name "${GITHUB_ACTOR}"
-          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git config user.name "podaac-cicd[bot]"
+          git config user.email "93616935+podaac-cicd[bot]@users.noreply.github.com"
           git tag -a "${{ env.software_version }}" -m "Version ${{ env.software_version }}"
           git push origin "${{ env.software_version }}"
       - name: Create GH release
