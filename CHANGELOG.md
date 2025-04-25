@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
 ## [0.7.0]
 ### Changed
 - [issues/46](https://github.com/podaac/net2cog/issues/46): Add support for L2 gridded and L4. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
@@ -11,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0]
 ### Changed
 - [issues/37](https://github.com/podaac/net2cog/issues/37): Migrated to use `xarray.DataTree`, in order to provide support for granules with hierarchical structure. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/37](https://github.com/podaac/net2cog/issues/37): Updated output file format in UMM-S record to "GEOTIFF", to ensure file format selection can be made in Earthdata Search.
 
 ## [0.5.0]
 ### Changed
@@ -46,8 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 [Unreleased]: https://github.com/podaac/net2cog/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/podaac/net2cog/compare/v0.6.0...v0.7.0
-[0.5.0]: https://github.com/podaac/net2cog/compare/v0.5.0...v0.6.0
+[0.6.0]: https://github.com/podaac/net2cog/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/podaac/net2cog/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/podaac/net2cog/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/podaac/net2cog/compare/eabb00704a6fc693aa4d79536dc5c5354c6de4d9...v0.3.0
