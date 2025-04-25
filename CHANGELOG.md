@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
-## [0.7.0]
+## [Unreleased]
 ### Changed
 - [issues/46](https://github.com/podaac/net2cog/issues/46): Add support for L2 gridded and L4. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 
