@@ -1,6 +1,6 @@
 {
   "Name": "net2cog",
-  "Description": "Converts NetCDF files to COG. Includes extension for running in NASA Harmony. https://github.com/podaac/net2cog",
+  "Description": "Converts NetCDF files to Cloud Optimized GeoTIFF (COG). Includes extension for running in NASA Harmony. https://github.com/podaac/net2cog",
   "Type": "Harmony",
   "URL": {
     "URLValue": "https://harmony.earthdata.nasa.gov",
@@ -21,7 +21,7 @@
     "SupportedReformattings": [
       {
         "SupportedOutputFormats": [
-          "COG"
+          "GEOTIFF"
         ],
         "SupportedInputFormat": "NETCDF-4"
       }
