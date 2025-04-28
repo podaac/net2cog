@@ -169,16 +169,16 @@ def test_excluded_variables_not_converted(temp_dir, logger, smap_file):
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
 )
 def test_has_spatial_dimensions_present(dimensions):
     """Verify returns True for variable with spatial dimensions."""
     test_datatree = xr.DataTree(
         dataset=xr.Dataset(
-            data_vars={'science': ([dimensions[0], dimensions[1]], np.ones((2, 3)))},
+            data_vars={'science': ([dimensions[0], dimensions[1]], np.ones((2, 4)))},
             coords={
                 dimensions[0]: (dimensions[0], np.array([1, 2])),
-                dimensions[1]: (dimensions[1], np.array([3, 4, 5])),
+                dimensions[1]: (dimensions[1], np.array([3, 4, 5, 6])),
             },
         ),
     )
@@ -187,33 +187,33 @@ def test_has_spatial_dimensions_present(dimensions):
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
 )
 def test_has_spatial_dimensions_and_others_present(dimensions):
     """Verify returns True, when spatial dimensions and others are present."""
     test_datatree = xr.DataTree(
         dataset=xr.Dataset(
             data_vars={
-                'science': (['time', dimensions[0], dimensions[1]], np.ones((1, 2, 3)))
+                'science': (['time', dimensions[0], dimensions[1]], np.ones((1, 2, 4)))
             },
             coords={
                 'time': ('time', np.array([0])),
                 dimensions[0]: (dimensions[0], np.array([1, 2])),
-                dimensions[1]: (dimensions[1], np.array([3, 4, 5])),
+                dimensions[1]: (dimensions[1], np.array([3, 4, 5, 6])),
             },
         ),
     )
     assert has_spatial_dimensions(test_datatree['science'])
 
 
-@pytest.mark.parametrize('dimension', ['lat', 'latitude', 'x'])
+@pytest.mark.parametrize('dimension', ['lat', 'latitude', 'x', 'x-dim'])
 def test_has_spatial_dimensions_incomplete(dimension):
     """Verify returns False when only one spatial dimension present."""
     test_datatree = xr.DataTree(
         dataset=xr.Dataset(
-            data_vars={'science': ([dimension], np.ones((2)))},
+            data_vars={'science': ([dimension], np.ones((4)))},
             coords={
-                dimension: (dimension, np.array([1, 2])),
+                dimension: (dimension, np.array([1, 2, 3, 4])),
             },
         ),
     )
@@ -224,9 +224,9 @@ def test_has_spatial_dimensions_absent():
     """Verify returns False for variable without spatial dimensions."""
     test_datatree = xr.DataTree(
         dataset=xr.Dataset(
-            data_vars={'science': (['time'], np.ones(3))},
+            data_vars={'science': (['time'], np.ones(4))},
             coords={
-                'time': ('time', np.array([1, 2, 3])),
+                'time': ('time', np.array([1, 2, 3, 4])),
             },
         ),
     )
@@ -298,3 +298,66 @@ def test_get_all_data_variables_hierarchical_input():
     assert set(get_all_data_variables(test_datatree)) == set(
         ['/science_one', '/group_one/science_two', '/group_one/group_two/science_three']
     )
+
+
+def test_spl2smp_nested_variable_selection(temp_dir, logger, spl2smp_nested_file):
+    """Verify a SPL2SMP nested variable in a hierarchical granule can be converted."""
+    test_file = pathlib.Path(temp_dir, spl2smp_nested_file)
+
+    # Process test file:
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ['Soil_Moisture_Retrieval_Data/vegetation_water_content'],
+        logger
+    )
+
+    # Check results are as expected:
+    assert len(results) == 1, 'Incorrect number of output file names.'
+
+    assert pathlib.Path(results[0]).is_file(), 'No file created.'
+    assert basename(results[0]) == 'Soil_Moisture_Retrieval_Data_vegetation_water_content.tif', 'Incorrect output file name'
+    cogtif_val = [
+        'rio',
+        'cogeo',
+        'validate',
+        results[0]
+    ]
+
+    process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
+    cog_test = process.stdout
+    cog_test = cog_test.replace('\n', '')
+
+    valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
+    assert cog_test == valid_cog, 'Output is not valid COG.'
+
+
+@pytest.mark.parametrize(['in_bands'], [[['Soil_Moisture_Retrieval_Data/vegetation_opacity', 'Soil_Moisture_Retrieval_Data/vegetation_water_content']]])
+def test_spl2smp_multiple_variable_selection(in_bands, temp_dir, spl2smp_nested_file, logger):
+    """
+    Verify the correct bands asked for by the user are being converted
+    """
+
+    in_bands = sorted(in_bands)
+    test_file = pathlib.Path(temp_dir, spl2smp_nested_file)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        in_bands,
+        logger
+    )
+
+    assert len(results) == 2, 'Incorrect number of output file names.'
+
+    in_bands = [in_band.lstrip('/').replace('/', '_')
+                for in_band in in_bands]
+
+    out_bands = []
+    for entry in results:
+        if pathlib.Path(entry).is_file():
+            band_completed = splitext(basename(entry))[0]
+            out_bands.append(band_completed)
+
+    out_bands.sort()
+    assert in_bands == out_bands, 'Incorrect output file names.'

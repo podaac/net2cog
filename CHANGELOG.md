@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issues/46](https://github.com/podaac/net2cog/issues/46): Add support for L2 gridded and L4. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 ### Deprecated
 ### Removed
 ### Fixed
@@ -38,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PCESA-2309 - Updated Jenkins to include building and pushing to ECC_NEXUS
 
 ## [0.2.0-alpha.14] - 3 September 2020
-### Changed 
+### Changed
 - PCESA-2272 - Updated to use the new SNS Baseworker, Job Service, and Staging Service
 
 ## [0.2.0-alpha.12] - 8 June 2020
@@ -47,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0-alpha.11] - 11 May 2020
 ### Added
-- Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing. 
+- Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing.  
 
 
 [Unreleased]: https://github.com/podaac/net2cog/compare/v0.6.0...HEAD

@@ -1,4 +1,5 @@
 """A pytest module containing test fixtures to be reused through out multiple tests."""
+
 import json
 import os
 from logging import getLogger
@@ -44,6 +45,18 @@ def nested_collection():
 def nested_file_basename():
     """Basename of the SPL4CMDL file used as test input."""
     return 'SMAP_L4_C_mdl_20150403T000000_Vv7042_001.h5'
+
+
+@fixture(scope='session')
+def spl2smp_nested_collection():
+    """Name of collection with a nested variable, used as a subdirectory in tests/data."""
+    return 'SPL2SMP_008'
+
+
+@fixture(scope='session')
+def spl2smp_nested_file_basename():
+    """Basename of the SPL2SMP gridded file used as test input."""
+    return 'SMAP_L2_SM_P_00867_A_20150331T194640_R18290_001_subsetted_regridded.nc'
 
 
 @fixture(scope='function')
@@ -179,3 +192,23 @@ def mock_environ(tmp_path):
 
     for variable_name in environment_variables:
         os.unsetenv(variable_name)
+
+
+@fixture(scope='function')
+def spl2smp_nested_file(
+    data_dir, temp_dir, spl2smp_nested_collection, spl2smp_nested_file_basename
+):
+    """Path to SPL2SMP gridded input file, copied into the test directory.
+
+    This file is already subsetted to be a bounding box region of a single
+    science variable (Soil_Moisture_Retrieval_Data/vegetation_opacity and
+    Soil_Moisture_Retrieval_Data/vegetation_water_content) to
+    reduce file size in the repository.
+
+    """
+    temporary_data_file = Path(join(temp_dir, spl2smp_nested_file_basename))
+    copyfile(
+        join(data_dir, spl2smp_nested_collection, spl2smp_nested_file_basename),
+        temporary_data_file,
+    )
+    return temporary_data_file
