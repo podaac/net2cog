@@ -56,20 +56,18 @@ def resolve_relative_path(
         reference_in_group = "/".join([reference_location, reference_path])
 
         try:
-            # Attempts to access the variable, catches the exception if it does not exist
-            nc_xarray[reference_in_group]
-            resolved_path = reference_in_group
+            if nc_xarray[reference_in_group] is not None:
+                resolved_path = reference_in_group
         except KeyError:
             resolved_path = f"/{reference_path}"
 
     try:
-        # Attempts to access the variable, catches the exception if it does not exist
-        nc_xarray[resolved_path]
-        logger.info(
-            "Variable %s grid_mapping or coordinate: resolved path %s",
-            variable_path,
-            resolved_path,
-        )
+        if nc_xarray[resolved_path] is not None:
+            logger.info(
+                "Variable %s grid_mapping or coordinate: Resolved path %s",
+                variable_path,
+                resolved_path,
+            )
     except KeyError:
         logger.info(
             "Variable %s grid_mapping or coordinate: %s relative path has incorrect nesting",
