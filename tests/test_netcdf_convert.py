@@ -8,6 +8,7 @@ Test the netcdf conversion functionality.
 import pathlib
 import subprocess
 from os.path import basename, splitext
+from rio_cogeo.cogeo import cog_validate
 
 import numpy as np
 import pytest
@@ -51,6 +52,7 @@ def test_single_cog_generation(smap_file, temp_dir, logger):
 
     valid_cog = results[0] + " is a valid cloud optimized GeoTIFF"
     assert cog_test == valid_cog, 'Output COG not valid.'
+    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
 
 
 @pytest.mark.parametrize(['in_bands'], [[['gland', 'fland', 'sss_smap']]])
@@ -111,6 +113,7 @@ def test_nested_variable_selection(temp_dir, logger, nested_file):
 
     valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
     assert cog_test == valid_cog, 'Output is not valid COG.'
+    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
 
 
 @pytest.mark.parametrize(['in_bands'], [[['waldo']]])
@@ -330,6 +333,8 @@ def test_spl2smp_nested_variable_selection(temp_dir, logger, spl2smp_nested_file
 
     valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
     assert cog_test == valid_cog, 'Output is not valid COG.'
+
+    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
 
 
 @pytest.mark.parametrize(['in_bands'], [[['Soil_Moisture_Retrieval_Data/vegetation_opacity', 'Soil_Moisture_Retrieval_Data/vegetation_water_content']]])
