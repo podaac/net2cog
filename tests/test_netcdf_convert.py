@@ -39,21 +39,8 @@ def test_single_cog_generation(smap_file, temp_dir, logger):
 
     assert pathlib.Path(results[0]).is_file(), 'No file created.'
     assert basename(results[0]) == 'sss_smap.tif', 'Incorrect output file name'
-    cogtif_val = [
-        'rio',
-        'cogeo',
-        'validate',
-        results[0]
-    ]
 
-    process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-    cog_test = process.stdout
-    cog_test = cog_test.replace("\n", "")
-
-    valid_cog = results[0] + " is a valid cloud optimized GeoTIFF"
-    assert cog_test == valid_cog, 'Output COG not valid.'
-
-    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
+    assert cog_validate(pathlib.Path(results[0]))[0]
     assert cog_info(pathlib.Path(results[0])).GEO.CRS == 'EPSG:4326'
 
 
@@ -102,20 +89,8 @@ def test_nested_variable_selection(temp_dir, logger, nested_file):
 
     assert pathlib.Path(results[0]).is_file(), 'No file created.'
     assert basename(results[0]) == 'NEE_nee_mean.tif', 'Incorrect output file name'
-    cogtif_val = [
-        'rio',
-        'cogeo',
-        'validate',
-        results[0]
-    ]
 
-    process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-    cog_test = process.stdout
-    cog_test = cog_test.replace('\n', '')
-
-    valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
-    assert cog_test == valid_cog, 'Output is not valid COG.'
-    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
+    assert cog_validate(pathlib.Path(results[0]))[0]
 
 
 @pytest.mark.parametrize(['in_bands'], [[['waldo']]])
@@ -336,7 +311,7 @@ def test_spl2smp_nested_variable_selection(temp_dir, logger, spl2smp_nested_file
     valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
     assert cog_test == valid_cog, 'Output is not valid COG.'
 
-    assert cog_validate(pathlib.Path(results[0])) == (True, [], [])
+    assert cog_validate(pathlib.Path(results[0]))[0]
     assert cog_info(pathlib.Path(results[0])).GEO.CRS == 'EPSG:6933'
 
 

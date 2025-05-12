@@ -23,9 +23,7 @@ from rio_cogeo.profiles import cog_profiles
 from rioxarray.exceptions import DimensionError
 from pyproj.crs import CRS as pyCRS
 from pyproj.exceptions import CRSError
-from net2cog.utilities import (
-    resolve_relative_path
-)
+from net2cog.utilities import resolve_relative_path
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 
@@ -236,7 +234,7 @@ def get_crs_from_grid_mapping(
 
     """
     # Default CRS EPSG:4326
-    crs = CRS.from_proj4(proj="+proj=latlong")
+    crs = CRS.from_epsg(4326)
 
     try:
         grid_mapping_attribute = nc_xarray[variable_path].attrs.get("grid_mapping")

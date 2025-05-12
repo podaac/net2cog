@@ -10,17 +10,14 @@ import pathlib
 import os
 from textwrap import dedent
 
+import pytest
 import numpy as np
 import xarray as xr
 import rasterio
 from rasterio.crs import CRS
 
-from net2cog.netcdf_convert import (
-    get_crs_from_grid_mapping,
-)
-from net2cog.utilities import (
-    resolve_relative_path
-)
+from net2cog.netcdf_convert import get_crs_from_grid_mapping
+from net2cog.utilities import resolve_relative_path
 
 # Test constants
 WKT_EPSG_6933 = dedent(
@@ -185,9 +182,9 @@ def test_crs_multiple_variable_selection_no_grid_mapping(temp_dir, smap_file, lo
     assert rasterio.crs.is_geographic
 
 
-def test_resolve_relative_path(logger):
-    """Ensure a relative path can be qualified to a full path using the
-    location of the dataset making the reference.
+@pytest.fixture(scope="class")
+def input_datatree():
+    """Build Datatree to verify tests.
 
     Tree structure in test:
 
@@ -201,7 +198,7 @@ def test_resolve_relative_path(logger):
           | science_four(lat, lon)
 
     """
-    test_datatree = xr.DataTree(
+    dt = xr.DataTree(
         dataset=xr.Dataset(
             data_vars={
                 "science_one": (["lat", "lon"], np.ones((2, 3))),
@@ -212,27 +209,47 @@ def test_resolve_relative_path(logger):
             },
         )
     )
-    test_datatree["group_one"] = xr.DataTree(
+    dt["group_one"] = xr.DataTree(
         dataset=xr.Dataset(
             data_vars={
                 "science_two": (["lat", "lon"], np.ones((2, 3))),
             },
         ),
     )
-    test_datatree["group_one"] = xr.DataTree(
+    dt["group_one"] = xr.DataTree(
         dataset=xr.Dataset(
             data_vars={
                 "science_three": (["lat", "lon"], np.ones((2, 3))),
             },
         ),
     )
-    test_datatree["group_one/group_two"] = xr.DataTree(
+    dt["group_one/group_two"] = xr.DataTree(
         dataset=xr.Dataset(
             data_vars={
                 "science_four": (["lat", "lon"], np.ones((2, 3))),
             },
         ),
     )
+
+    return dt
+
+
+def test_resolve_relative_path(logger, input_datatree):
+    """Ensure a relative path can be qualified to a full path using the
+    location of the dataset making the reference.
+
+    Tree structure in input_datatree:
+
+    |- science_one(lat, lon)
+    |- lat(lat)
+    |- lon(lon)
+    |- group_one
+       |- science_two(lat, lon)
+       |- science_three(lat, lon)
+       |- group_two
+          | science_four(lat, lon)
+
+    """
 
     test_args = [
         [
@@ -264,10 +281,27 @@ def test_resolve_relative_path(logger):
     for description, variable_path, reference_path, expected_path in test_args:
         print(description)
         resolved_path = resolve_relative_path(
-            test_datatree, variable_path, reference_path, logger
+            input_datatree, variable_path, reference_path, logger
         )
 
         assert resolved_path == expected_path
+
+
+def test_unresolved_path(logger, input_datatree):
+    """Ensure that unresolved paths result in a None return
+
+    Tree structure in input_datatree:
+
+    |- science_one(lat, lon)
+    |- lat(lat)
+    |- lon(lon)
+    |- group_one
+       |- science_two(lat, lon)
+       |- science_three(lat, lon)
+       |- group_two
+          | science_four(lat, lon)
+
+    """
 
     # Negative test
     test_args = [
@@ -294,7 +328,7 @@ def test_resolve_relative_path(logger):
     for description, variable_path, reference_path, expected_path in test_args:
         print(description)
         resolved_path = resolve_relative_path(
-            test_datatree, variable_path, reference_path, logger
+            input_datatree, variable_path, reference_path, logger
         )
 
         assert resolved_path == expected_path
