@@ -108,7 +108,7 @@ def construct_absolute_path(group_path: str, reference: str) -> str:
     group_path_pieces = group_path.split("/")
 
     while reference.startswith(relative_prefix):
-        reference = reference[len(relative_prefix) :]
+        reference = reference[len(relative_prefix):]
         group_path_pieces.pop()
 
     absolute_path = group_path_pieces + [reference]
