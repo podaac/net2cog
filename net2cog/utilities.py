@@ -43,21 +43,41 @@ def resolve_relative_path(
         Returns a path to reference attribute else None
 
     """
-    reference_location = variable_path.rpartition("/")[0]
 
-    if reference_path.startswith("/"):
-        # If the path starts with a slash, assume it is absolute
-        resolved_path = reference_path
+    # Extract the group of a variable from the full path,
+    # e.g. '/this/is/my/variable' should return '/this/is/my':
+    split_full_path = variable_path.split("/")
+    split_full_path.pop(-1)
+
+    group_path = "/".join(split_full_path) or None
+
+    if group_path is not None:
+        reference_path = reference_path.rstrip(":")
+
+        if reference_path.startswith("../"):
+            # Reference is relative, and requires manipulation
+            resolved_path = construct_absolute_path(group_path, reference_path)
+        elif reference_path.startswith("/"):
+            # Reference is already absolute
+            resolved_path = reference_path
+        elif reference_path.startswith("./"):
+            # Reference is in the same group as this variable
+            resolved_path = group_path + reference_path[1:]
+        else:
+            # Reference is in the same group as this variable
+            absolute_path = "/".join([group_path, reference_path])
+
+            try:
+                if nc_xarray[absolute_path] is not None:
+                    resolved_path = absolute_path
+            except KeyError:
+                resolved_path = f"/{reference_path}"
     else:
-        # If a path doesn't indicate nesing, first check if there is a variable
-        # matching the name in the same group as the referee, otherwise assume
-        # the variable reference is from the root group.
-        reference_in_group = "/".join([reference_location, reference_path])
+        reference_path = reference_path.rstrip(":")
 
-        try:
-            if nc_xarray[reference_in_group] is not None:
-                resolved_path = reference_in_group
-        except KeyError:
+        if reference_path.startswith("/"):
+            resolved_path = reference_path
+        else:
             resolved_path = f"/{reference_path}"
 
     try:
@@ -76,3 +96,20 @@ def resolve_relative_path(
         resolved_path = None
 
     return resolved_path
+
+
+def construct_absolute_path(group_path: str, reference: str) -> str:
+    """For a relative reference to another variable (e.g. '../latitude'),
+    construct an absolute path by combining the reference with the
+    group path of the variable.
+
+    """
+    relative_prefix = "../"
+    group_path_pieces = group_path.split("/")
+
+    while reference.startswith(relative_prefix):
+        reference = reference[len(relative_prefix) :]
+        group_path_pieces.pop()
+
+    absolute_path = group_path_pieces + [reference]
+    return "/".join(absolute_path)

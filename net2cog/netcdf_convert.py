@@ -236,22 +236,22 @@ def get_crs_from_grid_mapping(
     # Default CRS EPSG:4326
     crs = CRS.from_epsg(4326)
 
-    try:
-        grid_mapping_attribute = nc_xarray[variable_path].attrs.get("grid_mapping")
+    grid_mapping_attribute = nc_xarray[variable_path].attrs.get("grid_mapping")
 
-        if grid_mapping_attribute is not None:
-            cf_reference_attribute = resolve_relative_path(
-                nc_xarray, variable_path, grid_mapping_attribute, logger
-            )
+    if grid_mapping_attribute is not None:
+        cf_reference_attribute = resolve_relative_path(
+            nc_xarray, variable_path, grid_mapping_attribute, logger
+        )
 
+        try:
             if cf_reference_attribute is not None:
                 cf_parameters = nc_xarray[cf_reference_attribute].attrs
                 crs = pyCRS.from_cf(cf_parameters)
                 logger.info("CRS: %s", crs)
-    except CRSError:
-        logger.info("An unsupported target CRS. Use default CRS: %s", crs)
-    except KeyError:
-        logger.info("No variable named : %s", variable_path)
+        except CRSError as error:
+            raise Net2CogError(
+                crs, f"An unsupported target CRS. Use default CRS '{crs}'."
+            ) from error
 
     return crs
 
