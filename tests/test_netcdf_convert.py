@@ -297,19 +297,6 @@ def test_spl2smp_nested_variable_selection(temp_dir, logger, spl2smp_nested_file
 
     assert pathlib.Path(results[0]).is_file(), 'No file created.'
     assert basename(results[0]) == 'Soil_Moisture_Retrieval_Data_vegetation_water_content.tif', 'Incorrect output file name'
-    cogtif_val = [
-        'rio',
-        'cogeo',
-        'validate',
-        results[0]
-    ]
-
-    process = subprocess.run(cogtif_val, check=True, stdout=subprocess.PIPE, universal_newlines=True)
-    cog_test = process.stdout
-    cog_test = cog_test.replace('\n', '')
-
-    valid_cog = results[0] + ' is a valid cloud optimized GeoTIFF'
-    assert cog_test == valid_cog, 'Output is not valid COG.'
 
     assert cog_validate(pathlib.Path(results[0]))[0]
     assert cog_info(pathlib.Path(results[0])).GEO.CRS == 'EPSG:6933'
