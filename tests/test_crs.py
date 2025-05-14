@@ -73,67 +73,6 @@ def test_crs_multiple_variable_selection_no_grid_mapping(temp_dir, smap_file, lo
     assert output_crs.is_geographic
 
 
-@pytest.fixture(scope="class")
-def input_datatree():
-    """Build Datatree to verify tests.
-
-    Tree structure in test:
-
-    |- science_one(lat, lon)
-    |- lat(lat)
-    |- lon(lon)
-    |- group_one
-       |- science_two(lat, lon)
-       |- science_three(lat, lon)
-       |- group_two
-          | science_four(lat, lon)
-    |- group_five
-       |- variable_one(attr: grid_mapping)
-
-    """
-    dt = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "science_one": (["lat", "lon"], np.ones((2, 3))),
-            },
-            coords={
-                "lat": ("lat", np.array([1, 2])),
-                "lon": ("lon", np.array([3, 4, 5])),
-            },
-        )
-    )
-    dt["group_one"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "science_two": (["lat", "lon"], np.ones((2, 3))),
-            },
-        ),
-    )
-    dt["group_one"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "science_three": (["lat", "lon"], np.ones((2, 3))),
-            },
-        ),
-    )
-    dt["group_one/group_two"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "science_four": (["lat", "lon"], np.ones((2, 3))),
-            },
-        ),
-    )
-    dt["group_five/variable_one"] = xr.DataArray(
-        data=np.array([1603, 1604, 1605, 1606, 1607], dtype=np.uint16),
-        dims=["phony_dim_0"],
-        attrs={
-            "grid_mapping": "science_one",
-        },
-    )
-
-    return dt
-
-
 def test_resolve_relative_path(logger, input_datatree):
     """Ensure a relative path can be qualified to a full path using the
     location of the dataset making the reference.

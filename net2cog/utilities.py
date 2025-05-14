@@ -46,37 +46,21 @@ def resolve_relative_path(
 
     # Extract the group of a variable from the full path,
     # e.g. '/this/is/my/variable' should return '/this/is/my':
-    split_full_path = variable_path.split("/")
-    split_full_path.pop(-1)
+    group_path = variable_path.rpartition("/")[0]
 
-    group_path = "/".join(split_full_path) or None
-
-    if group_path is not None:
-        reference_path = reference_path.rstrip(":")
-
-        if reference_path.startswith("../"):
-            # Reference is relative, and requires manipulation
-            resolved_path = construct_absolute_path(group_path, reference_path)
-        elif reference_path.startswith("/"):
-            # Reference is already absolute
-            resolved_path = reference_path
-        elif reference_path.startswith("./"):
-            # Reference is in the same group as this variable
-            resolved_path = group_path + reference_path[1:]
-        else:
-            # Reference is in the same group as this variable
-            absolute_path = "/".join([group_path, reference_path])
-
-            try:
-                if nc_xarray[absolute_path] is not None:
-                    resolved_path = absolute_path
-            except KeyError:
-                resolved_path = f"/{reference_path}"
+    if reference_path.startswith("../"):
+        # Reference is relative, and requires manipulation
+        resolved_path = construct_absolute_path(group_path, reference_path)
+    elif reference_path.startswith("/"):
+        # Reference is already absolute
+        resolved_path = reference_path
+    elif reference_path.startswith("./"):
+        # Reference is in the same group as this variable
+        resolved_path = group_path + reference_path[1:]
     else:
-        reference_path = reference_path.rstrip(":")
-
-        if reference_path.startswith("/"):
-            resolved_path = reference_path
+        # Check if reference is in the same group as this variable
+        if reference_path in set(nc_xarray[group_path].data_vars):
+            resolved_path = "/".join([group_path, reference_path])
         else:
             resolved_path = f"/{reference_path}"
 
