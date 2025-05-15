@@ -23,21 +23,9 @@ from rio_cogeo.profiles import cog_profiles
 from rioxarray.exceptions import DimensionError
 from pyproj.crs import CRS as pyCRS
 from pyproj.exceptions import CRSError
-from net2cog.utilities import resolve_relative_path
+from net2cog.utilities import resolve_relative_path, Net2CogError
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
-
-
-class Net2CogError(Exception):
-    """
-    Exception raised when an error occurs while converting a NetCDF file to COG
-    """
-
-    def __init__(self, variable_name: str, error_message: str):
-        super().__init__(
-            f'Variable {variable_name} cannot be converted to tif: {error_message}'
-        )
-
 
 def _rioxr_swapdims(netcdf_xarray):
     netcdf_xarray.coords['y'] = ('lat', netcdf_xarray.lat)

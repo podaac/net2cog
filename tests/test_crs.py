@@ -194,11 +194,10 @@ def test_unresolved_path(logger, input_datatree):
 
     for description, variable_path, reference_path, expected_path in test_args:
         print(description)
-        resolved_path = resolve_relative_path(
+        with pytest.raises(Net2CogError):
+            resolve_relative_path(
             input_datatree, variable_path, reference_path, logger
         )
-
-        assert resolved_path == expected_path
 
 
 def test_pyCRS_from_cf_handle_exception(logger, input_datatree):

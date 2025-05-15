@@ -10,6 +10,46 @@ from logging import Logger
 
 import xarray as xr
 
+class Net2CogError(Exception):
+    """
+    Exception raised when an error occurs while converting a NetCDF file to COG
+    """
+
+    def __init__(self, variable_name: str, error_message: str):
+        super().__init__(
+            f'Variable {variable_name} cannot be converted to tif: {error_message}'
+        )
+
+
+def is_variable_in_datatree(
+    nc_xarray: xr.DataTree,
+    variable_path: str
+) -> bool:
+    """Traverse tree and retrieve all data variables in all groups.
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+
+    Returns
+    -------
+    bool
+        True if data variables in DataTree:
+        
+    """
+    data_variables = []
+    for group_path, group in nc_xarray.to_dict().items():
+        data_variables.extend([
+            '/'.join([group_path.rstrip('/'), str(data_var)])
+            for data_var in group.data_vars
+        ])
+
+        if variable_path in data_variables:
+            return True
+
+    return False
+
 
 def resolve_relative_path(
     nc_xarray: xr.DataTree,
@@ -57,27 +97,17 @@ def resolve_relative_path(
     elif reference_path.startswith("./"):
         # Reference is in the same group as this variable
         resolved_path = group_path + reference_path[1:]
+    elif reference_path in nc_xarray[group_path].data_vars:
+        # Reference is in the same group as this variable
+        resolved_path = "/".join([group_path, reference_path])
+    elif is_variable_in_datatree(nc_xarray, '/' + reference_path):
+        resolved_path = f"/{reference_path}"
     else:
-        # Check if reference is in the same group as this variable
-        if reference_path in set(nc_xarray[group_path].data_vars):
-            resolved_path = "/".join([group_path, reference_path])
-        else:
-            resolved_path = f"/{reference_path}"
-
-    try:
-        if nc_xarray[resolved_path] is not None:
-            logger.info(
-                "Variable %s grid_mapping or coordinate: Resolved path %s",
-                variable_path,
-                resolved_path,
-            )
-    except KeyError:
-        logger.info(
-            "Variable %s grid_mapping or coordinate: %s relative path has incorrect nesting",
-            variable_path,
-            reference_path,
+        raise Net2CogError(
+            variable_path, 
+            f'Variable {variable_path} grid_mapping or coordinate: '
+            '{reference_path} relative path has incorrect nesting'
         )
-        resolved_path = None
 
     return resolved_path
 
