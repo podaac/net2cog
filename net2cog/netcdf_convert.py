@@ -27,6 +27,7 @@ from net2cog.utilities import resolve_relative_path, Net2CogError
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 
+
 def _rioxr_swapdims(netcdf_xarray):
     netcdf_xarray.coords['y'] = ('lat', netcdf_xarray.lat)
     netcdf_xarray.coords['x'] = ('lon', netcdf_xarray.lon)
