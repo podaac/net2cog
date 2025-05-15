@@ -228,7 +228,7 @@ def get_crs_from_grid_mapping(
 
     if grid_mapping_attribute is not None:
         cf_reference_attribute = resolve_relative_path(
-            nc_xarray, variable_path, grid_mapping_attribute, logger
+            nc_xarray, variable_path, grid_mapping_attribute
         )
 
         try:

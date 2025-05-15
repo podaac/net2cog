@@ -6,9 +6,9 @@ utilties.py
 Utility functions for use within the net2cog service.
 """
 
-from logging import Logger
 
 import xarray as xr
+
 
 class Net2CogError(Exception):
     """
@@ -17,14 +17,11 @@ class Net2CogError(Exception):
 
     def __init__(self, variable_name: str, error_message: str):
         super().__init__(
-            f'Variable {variable_name} cannot be converted to tif: {error_message}'
+            f"Variable {variable_name} cannot be converted to tif: {error_message}"
         )
 
 
-def is_variable_in_datatree(
-    nc_xarray: xr.DataTree,
-    variable_path: str
-) -> bool:
+def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
     """Traverse tree and retrieve all data variables in all groups.
 
     Parameters
@@ -36,14 +33,16 @@ def is_variable_in_datatree(
     -------
     bool
         True if data variables in DataTree:
-        
+
     """
     data_variables = []
     for group_path, group in nc_xarray.to_dict().items():
-        data_variables.extend([
-            '/'.join([group_path.rstrip('/'), str(data_var)])
-            for data_var in group.data_vars
-        ])
+        data_variables.extend(
+            [
+                "/".join([group_path.rstrip("/"), str(data_var)])
+                for data_var in group.data_vars
+            ]
+        )
 
         if variable_path in data_variables:
             return True
@@ -55,7 +54,6 @@ def resolve_relative_path(
     nc_xarray: xr.DataTree,
     variable_path: str,
     reference_path: str,
-    logger: Logger,
 ) -> str:
     """Given a relative path within a granule, resolve an absolute path given
     the location of the variable making the reference. For example, a
@@ -100,13 +98,13 @@ def resolve_relative_path(
     elif reference_path in nc_xarray[group_path].data_vars:
         # Reference is in the same group as this variable
         resolved_path = "/".join([group_path, reference_path])
-    elif is_variable_in_datatree(nc_xarray, '/' + reference_path):
+    elif is_variable_in_datatree(nc_xarray, "/" + reference_path):
         resolved_path = f"/{reference_path}"
     else:
         raise Net2CogError(
-            variable_path, 
-            f'Variable {variable_path} grid_mapping or coordinate: '
-            '{reference_path} relative path has incorrect nesting'
+            variable_path,
+            f"Variable {variable_path} grid_mapping or coordinate: "
+            "{reference_path} relative path has incorrect nesting",
         )
 
     return resolved_path

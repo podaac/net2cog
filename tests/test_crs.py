@@ -10,7 +10,6 @@ import pathlib
 import os
 
 import pytest
-import numpy as np
 import xarray as xr
 from rasterio.crs import CRS
 
@@ -73,7 +72,7 @@ def test_crs_multiple_variable_selection_no_grid_mapping(temp_dir, smap_file, lo
     assert output_crs.is_geographic
 
 
-def test_resolve_relative_path(logger, input_datatree):
+def test_resolve_relative_path(input_datatree):
     """Ensure a relative path can be qualified to a full path using the
     location of the dataset making the reference.
 
@@ -146,13 +145,13 @@ def test_resolve_relative_path(logger, input_datatree):
     for description, variable_path, reference_path, expected_path in test_args:
         print(description)
         resolved_path = resolve_relative_path(
-            input_datatree, variable_path, reference_path, logger
+            input_datatree, variable_path, reference_path
         )
 
         assert resolved_path == expected_path
 
 
-def test_unresolved_path(logger, input_datatree):
+def test_unresolved_path(input_datatree):
     """Ensure that unresolved paths result in a None return
 
     Tree structure in input_datatree:
@@ -195,19 +194,17 @@ def test_unresolved_path(logger, input_datatree):
     for description, variable_path, reference_path, expected_path in test_args:
         print(description)
         with pytest.raises(Net2CogError):
-            resolve_relative_path(
-            input_datatree, variable_path, reference_path, logger
-        )
+            resolve_relative_path(input_datatree, variable_path, reference_path)
 
 
 def test_pyCRS_from_cf_handle_exception(logger, input_datatree):
     """Ensure that pyCRS.from_cf() catch CRSError exception and rethrows
     Net2CogError if error processings a grid-mapping.
 
-    The following test will raise an exception because 
-    group_five/variable_one grid_mapping attribute points to science_one, 
+    The following test will raise an exception because
+    group_five/variable_one grid_mapping attribute points to science_one,
     references a dataset that lacks the required cf_parameters
-    
+
     Tree structure in input_datatree:
 
     |- science_one(lat, lon)
