@@ -22,17 +22,20 @@ class Net2CogError(Exception):
 
 
 def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
-    """Traverse tree and retrieve all data variables in all groups.
+    """Traverse tree and verify variables path in DataTree.
 
     Parameters
     ----------
     nc_xarray : xarray.DataTree
         DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
 
     Returns
     -------
     bool
-        True if data variables in DataTree:
+        True if variables in DataTree
+        False if variables not in DataTree
 
     """
     data_variables = []
@@ -98,7 +101,7 @@ def resolve_relative_path(
     elif reference_path in nc_xarray[group_path].data_vars:
         # Reference is in the same group as this variable
         resolved_path = "/".join([group_path, reference_path])
-    elif is_variable_in_datatree(nc_xarray, "/" + reference_path):
+    elif is_variable_in_datatree(nc_xarray, f"/{reference_path}"):
         resolved_path = f"/{reference_path}"
     else:
         raise Net2CogError(

@@ -17,7 +17,10 @@ from net2cog.netcdf_convert import (
     Net2CogError,
     get_crs_from_grid_mapping,
 )
-from net2cog.utilities import resolve_relative_path
+from net2cog.utilities import (
+    resolve_relative_path,
+    is_variable_in_datatree,
+)
 
 
 def test_crs_nested_path_same_group(temp_dir, logger, spl2smp_nested_file):
@@ -151,7 +154,7 @@ def test_resolve_relative_path(input_datatree):
         assert resolved_path == expected_path
 
 
-def test_unresolved_path(input_datatree):
+def test_resolve_relative_path_handle_exception(input_datatree):
     """Ensure that unresolved paths result in a None return
 
     Tree structure in input_datatree:
@@ -172,26 +175,23 @@ def test_unresolved_path(input_datatree):
     # Negative test
     test_args = [
         [
-            "Relative path has incorrect nesting",
+            "Test resolve_relative_path() handle excpetion for relative path incorrect nesting",
             "group_one/science_two",
             "group_one/science_four",
-            None,
         ],
         [
-            "Variable reference not in Datatree",
+            "Test resolve_relative_path() handle excpetion for variable reference not in Datatree",
             "group_one/science_three",
             "science_three_half",
-            None,
         ],
         [
-            "Double nested cross group not in Datatree",
+            "Test resolve_relative_path() handle excpetion for double nested cross group not in Datatree",
             "group_one/science_two",
             "group_one/group_two/science_two",
-            None,
         ],
     ]
 
-    for description, variable_path, reference_path, expected_path in test_args:
+    for description, variable_path, reference_path in test_args:
         print(description)
         with pytest.raises(Net2CogError):
             resolve_relative_path(input_datatree, variable_path, reference_path)
@@ -222,3 +222,91 @@ def test_pyCRS_from_cf_handle_exception(logger, input_datatree):
 
     with pytest.raises(Net2CogError):
         get_crs_from_grid_mapping(input_datatree, "group_five/variable_one", logger)
+
+
+def test_is_variable_in_datatree(input_datatree):
+    """Ensure the absolute reference path is present in DataTree.
+
+    Tree structure in input_datatree:
+
+    |- science_one(lat, lon)
+    |- lat(lat)
+    |- lon(lon)
+    |- group_one
+       |- science_two(lat, lon)
+       |- science_three(lat, lon)
+       |- group_two
+          | science_four(lat, lon)
+    |- group_five
+       |- variable_one(attr: grid_mapping)
+
+    """
+
+    test_args = [
+        [
+            "Test is_variable_in_datatree() single absolute reference path",
+            "/science_one",
+        ],
+        [
+            "Test is_variable_in_datatree() nested relative reference path",
+            "/group_one/science_three",
+        ],
+        [
+            "Test is_variable_in_datatree() double nested cross group relative path",
+            "/group_one/group_two/science_four",
+        ],
+        [
+            "Test is_variable_in_datatree() reference is in the same group as this variable ./",
+            "/group_one/science_three",
+        ],
+    ]
+
+    for description, reference_path in test_args:
+        print(description)
+        resolved_path = is_variable_in_datatree(input_datatree, reference_path)
+
+        assert resolved_path
+
+
+def test_variable_not_in_datatree(input_datatree):
+    """Ensure the absolute reference path is not present in DataTree.
+
+    Tree structure in input_datatree:
+
+    |- science_one(lat, lon)
+    |- lat(lat)
+    |- lon(lon)
+    |- group_one
+       |- science_two(lat, lon)
+       |- science_three(lat, lon)
+       |- group_two
+          | science_four(lat, lon)
+    |- group_five
+       |- variable_one(attr: grid_mapping)
+
+    """
+
+    test_args = [
+        [
+            "Negative test is_variable_in_datatree() single absolute reference path",
+            "/science_one_half",
+        ],
+        [
+            "Negative test is_variable_in_datatree() nested relative reference path",
+            "/group_one/science_three_half",
+        ],
+        [
+            "Negative test is_variable_in_datatree() double nested cross group relative path",
+            "/group_one/group_two/science_four_half",
+        ],
+        [
+            "Negative test is_variable_in_datatree() reference is in the same group as this variable ./",
+            "/group_one/science_three_half",
+        ],
+    ]
+
+    for description, reference_path in test_args:
+        print(description)
+        resolved_path = is_variable_in_datatree(input_datatree, reference_path)
+
+        assert resolved_path is False
