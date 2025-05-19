@@ -9,6 +9,8 @@ from shutil import copyfile, rmtree
 from tempfile import mkdtemp
 
 from pytest import fixture
+import numpy as np
+import xarray as xr
 
 
 @fixture(scope='session')
@@ -212,3 +214,65 @@ def spl2smp_nested_file(
         temporary_data_file,
     )
     return temporary_data_file
+
+
+@fixture()
+def input_datatree():
+    """Build Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_one(lat, lon)
+    |- lat(lat)
+    |- lon(lon)
+    |- group_one
+       |- science_two(lat, lon)
+       |- science_three(lat, lon)
+       |- group_two
+          | science_four(lat, lon)
+    |- group_five
+       |- variable_one(attr: grid_mapping)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_one": (["lat", "lon"], np.ones((2, 3))),
+            },
+            coords={
+                "lat": ("lat", np.array([1, 2])),
+                "lon": ("lon", np.array([3, 4, 5])),
+            },
+        )
+    )
+    dt["group_one"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_two": (["lat", "lon"], np.ones((2, 3))),
+            },
+        ),
+    )
+    dt["group_one"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_three": (["lat", "lon"], np.ones((2, 3))),
+            },
+        ),
+    )
+    dt["group_one/group_two"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_four": (["lat", "lon"], np.ones((2, 3))),
+            },
+        ),
+    )
+    dt["group_five/variable_one"] = xr.DataArray(
+        data=np.array([[1, 2], [3, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "grid_mapping": "science_one",
+        },
+    )
+
+    return dt

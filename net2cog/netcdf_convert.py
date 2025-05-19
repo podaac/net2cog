@@ -21,19 +21,11 @@ from rasterio import CRS
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
 from rioxarray.exceptions import DimensionError
+from pyproj.crs import CRS as pyCRS
+from pyproj.exceptions import CRSError
+from net2cog.utilities import resolve_relative_path, Net2CogError
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
-
-
-class Net2CogError(Exception):
-    """
-    Exception raised when an error occurs while converting a NetCDF file to COG
-    """
-
-    def __init__(self, variable_name: str, error_message: str):
-        super().__init__(
-            f'Variable {variable_name} cannot be converted to tif: {error_message}'
-        )
 
 
 def _rioxr_swapdims(netcdf_xarray):
@@ -131,7 +123,9 @@ def _write_cogtiff(
         with rasterio.open(temp_file_name, mode='r+') as src_dataset:
             # if src_dst.crs is None:
             #     src_dst.crs = crs
-            src_dataset.crs = CRS.from_proj4(proj="+proj=latlong")
+            src_dataset.crs = get_crs_from_grid_mapping(
+                nc_xarray, variable_path, logger
+            )
             dst_profile = cog_profiles.get("deflate")
             cog_translate(
                 src_dataset,
@@ -200,6 +194,55 @@ def has_spatial_dimensions(variable: xr.DataArray | xr.DataTree) -> bool:
         or {"x", "y"}.issubset(set(variable.dims))
         or {"x-dim", "y-dim"}.issubset(set(variable.dims))
     )
+
+
+def get_crs_from_grid_mapping(
+    nc_xarray: xr.DataTree,
+    variable_path: str,
+    logger: Logger,
+) -> CRS:
+    """Check the metadata attributes for the variable to find the associated
+    grid mapping variable.  If the grid mapping variable, as referred to in the
+    grid_mapping CF-Convention metadata attribute, does not exist then
+    default to "+proj=latlong".
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        xarray DataTree loaded from NetCDF file. This represents the whole
+        file.
+    variable_path: str
+        Full of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+
+    Returns
+    -------
+    csr
+        Returns a `CRS` object corresponding to a grid mapping variable.
+
+    """
+    # Default CRS EPSG:4326
+    crs = CRS.from_epsg(4326)
+
+    grid_mapping_attribute = nc_xarray[variable_path].attrs.get("grid_mapping")
+
+    if grid_mapping_attribute is not None:
+        cf_reference_attribute = resolve_relative_path(
+            nc_xarray, variable_path, grid_mapping_attribute
+        )
+
+        try:
+            if cf_reference_attribute is not None:
+                cf_parameters = nc_xarray[cf_reference_attribute].attrs
+                crs = pyCRS.from_cf(cf_parameters)
+                logger.info("CRS: %s", crs)
+        except CRSError as error:
+            raise Net2CogError(
+                crs, f"An unsupported target CRS. Use default CRS '{crs}'."
+            ) from error
+
+    return crs
 
 
 def netcdf_converter(
