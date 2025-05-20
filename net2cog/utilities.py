@@ -11,6 +11,7 @@ import xarray as xr
 X_COORDINATE = ("lon", "longitude", "x", "x-dim")
 Y_COORDINATE = ("lat", "latitude", "y", "y-dim")
 
+
 class Net2CogError(Exception):
     """
     Exception raised when an error occurs while converting a NetCDF file to COG
