@@ -11,7 +11,6 @@ import xarray as xr
 X_COORDINATE = ("lon", "longitude", "x", "x-dim")
 Y_COORDINATE = ("lat", "latitude", "y", "y-dim")
 
-
 class Net2CogError(Exception):
     """
     Exception raised when an error occurs while converting a NetCDF file to COG
@@ -178,7 +177,7 @@ def construct_absolute_path(group_path: str, reference: str) -> str:
     group_path_pieces = group_path.split("/")
 
     while reference.startswith(relative_prefix):
-        reference = reference[len(relative_prefix) :]
+        reference = reference[len(relative_prefix):]
         group_path_pieces.pop()
 
     absolute_path = group_path_pieces + [reference]
