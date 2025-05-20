@@ -332,3 +332,29 @@ def test_spl2smp_multiple_variable_selection(in_bands, temp_dir, spl2smp_nested_
 
     out_bands.sort()
     assert in_bands == out_bands, 'Incorrect output file names.'
+
+
+def test_spl3smp_nested_variable_3d_annotated(
+    temp_dir, logger, spl3smp_nested_3d_annotated_file
+):
+    """Verify a SPL3SMP nested variable with 3 dimension in a hierarchical granule
+    can be converted.
+
+    """
+    test_file = pathlib.Path(temp_dir, spl3smp_nested_3d_annotated_file)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ["Soil_Moisture_Retrieval_Data_AM/landcover_class"],
+        logger,
+    )
+
+    # Check results are as expected:
+    assert len(results) == 1, "Incorrect number of output file names."
+
+    assert pathlib.Path(results[0]).is_file(), "No file created."
+    assert (
+        basename(results[0]) == "Soil_Moisture_Retrieval_Data_AM_landcover_class.tif"
+    ), "Incorrect output file name"
+    assert cog_validate(pathlib.Path(results[0]))[0]

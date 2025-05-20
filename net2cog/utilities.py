@@ -6,19 +6,74 @@ utilties.py
 Utility functions for use within the net2cog service.
 """
 
-
 import xarray as xr
+
+X_COORDINATE = ("lon", "longitude", "x", "x-dim")
+Y_COORDINATE = ("lat", "latitude", "y", "y-dim")
 
 
 class Net2CogError(Exception):
     """
     Exception raised when an error occurs while converting a NetCDF file to COG
+
     """
 
     def __init__(self, variable_name: str, error_message: str):
         super().__init__(
             f"Variable {variable_name} cannot be converted to tif: {error_message}"
         )
+
+
+def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTree:
+    """This function reorders a 2D and 3D using DataTree.transpose() to
+    create the correct dimension order in a new DataTree.
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+
+    Returns
+    -------
+    xr.DataTree
+        New DataTree with proper order dimensions
+
+    """
+    # Find the union of X_COORDINATE/Y_COORDINATE to DataTree.dims
+    x_dim = "".join(dim for dim in X_COORDINATE if dim in nc_xarray[variable_path].dims)
+    y_dim = "".join(dim for dim in Y_COORDINATE if dim in nc_xarray[variable_path].dims)
+
+    extra_dim = tuple(set(list(nc_xarray[variable_path].dims)) - {x_dim, y_dim})
+    if len(extra_dim) > 1:
+        raise Net2CogError(
+            variable_path,
+            f"Only 2D and 3D data arrays supported. {nc_xarray[variable_path].dims}",
+        )
+
+    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
+    nc_xarray_tmp = nc_xarray.copy()
+
+    # Reorder 3rd Dimension
+    if len(extra_dim) == 1:
+        # Find the difference between two sets
+        z_dim = "".join(set(nc_xarray[variable_path].dims) - {x_dim, y_dim})
+
+        if None in [x_dim, y_dim, z_dim]:
+            raise Net2CogError(
+                variable_path,
+                f"{x_dim}, {y_dim}, or {z_dim} dimensions not found in DataTree {nc_xarray[variable_path].dims}",
+            )
+
+        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
+            z_dim, y_dim, x_dim
+        )
+    else:
+        # Reorder 2 Dimension
+        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(y_dim, x_dim)
+
+    return nc_xarray_tmp
 
 
 def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
@@ -123,7 +178,7 @@ def construct_absolute_path(group_path: str, reference: str) -> str:
     group_path_pieces = group_path.split("/")
 
     while reference.startswith(relative_prefix):
-        reference = reference[len(relative_prefix):]
+        reference = reference[len(relative_prefix) :]
         group_path_pieces.pop()
 
     absolute_path = group_path_pieces + [reference]
