@@ -42,36 +42,41 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
 
     """
     # Find the union of X_COORDINATE/Y_COORDINATE to DataTree.dims
-    x_dim = "".join(dim for dim in X_COORDINATE if dim in nc_xarray[variable_path].dims)
-    y_dim = "".join(dim for dim in Y_COORDINATE if dim in nc_xarray[variable_path].dims)
-
-    extra_dim = tuple(set(list(nc_xarray[variable_path].dims)) - {x_dim, y_dim})
-    if len(extra_dim) > 1:
+    x_dim = list(set(X_COORDINATE) & set(nc_xarray[variable_path].dims))
+    y_dim = list(set(Y_COORDINATE) & set(nc_xarray[variable_path].dims))
+    if not x_dim or not y_dim:
         raise Net2CogError(
             variable_path,
-            f"Only 2D and 3D data arrays supported. {nc_xarray[variable_path].dims}",
+            f"{X_COORDINATE} or {Y_COORDINATE} dimensions not found in "
+            "DataTree.dims{nc_xarray[variable_path].dims}",
         )
 
     # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
     nc_xarray_tmp = nc_xarray.copy()
 
-    # Reorder 3rd Dimension
-    if len(extra_dim) == 1:
-        # Find the difference between two sets
-        z_dim = "".join(set(nc_xarray[variable_path].dims) - {x_dim, y_dim})
-
-        if None in [x_dim, y_dim, z_dim]:
+    z_dim = list(set(nc_xarray[variable_path].dims) - {x_dim[0], y_dim[0]})
+    if len(z_dim) > 1:
+        # 4 Dimension and up not supported
+        raise Net2CogError(
+            variable_path,
+            f"Only 2D and 3D data arrays supported. {nc_xarray[variable_path].dims}",
+        )
+    elif len(z_dim) == 0:
+        # Reorder 2 Dimension
+        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
+            y_dim[0], x_dim[0]
+        )
+    else:
+        # Reorder 3rd Dimension
+        if not z_dim or not z_dim[0]:
             raise Net2CogError(
                 variable_path,
-                f"{x_dim}, {y_dim}, or {z_dim} dimensions not found in DataTree {nc_xarray[variable_path].dims}",
+                f"{z_dim} dimensions not found in {nc_xarray[variable_path].dims}",
             )
 
         nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
-            z_dim, y_dim, x_dim
+            z_dim[0], y_dim[0], x_dim[0]
         )
-    else:
-        # Reorder 2 Dimension
-        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(y_dim, x_dim)
 
     return nc_xarray_tmp
 

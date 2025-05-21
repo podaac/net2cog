@@ -398,6 +398,32 @@ def input_datatree_reorder_3d():
             },
         )
     )
+    dt["group_five"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_six": (["y", "x", ""], np.ones((2, 2, 2))),
+            },
+            coords={
+                "y": ("y", np.array([1, 2])),
+                "x": ("x", np.array([3, 4])),
+                "": ("", np.array([5, 6])),
+            },
+        )
+    )
+
+    dt["group_six"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_seven": (["y", "x", "z", "w"], np.ones((2, 2, 2, 2))),
+            },
+            coords={
+                "y": ("y", np.array([1, 2])),
+                "x": ("x", np.array([3, 4])),
+                "z": ("z", np.array([5, 6])),
+                "w": ("w", np.array([7, 8])),
+            },
+        )
+    )
 
     return dt
 

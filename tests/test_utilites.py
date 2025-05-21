@@ -6,13 +6,7 @@ test_utilities.py
 Test the net2cog utilites functionality.
 """
 
-import pathlib
-import os
-
-import numpy as np
 import pytest
-import xarray as xr
-from rasterio.crs import CRS
 from net2cog.netcdf_convert import Net2CogError
 from net2cog.utilities import (
     resolve_relative_path,
@@ -232,8 +226,8 @@ def test_variable_not_in_datatree(input_datatree):
 
 
 def test_reorder_2d_lon_lat(input_datatree_reorder_2d_lon_lat):
-    """Ensure that a 2-dimensional lon, lat array is reordered using 
-    DataTree.transpose() to create the correct dimension 
+    """Ensure that a 2-dimensional lon, lat array is reordered using
+    DataTree.transpose() to create the correct dimension
     order in a new DataTree
 
     Tree structure in input_datatree:
@@ -241,24 +235,22 @@ def test_reorder_2d_lon_lat(input_datatree_reorder_2d_lon_lat):
     |- science_one(lon, lat)
     |- lat(lat)
     |- lon(lon)
-       
+
     """
 
     description = "Test reordered (lon, lat) to (lat, lon)"
     variable_path = "science_one"
-    expected_path = ('lat', 'lon')
+    expected_path = ("lat", "lon")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
-        input_datatree_reorder_2d_lon_lat, variable_path
-    )
+    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_lon_lat, variable_path)
 
     assert nc_xarray_tmp[variable_path].dims == expected_path
 
 
 def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latitude):
-    """Ensure that a 2-dimensional longitude, latitude) array is reordered using 
-    DataTree.transpose() to create the correct dimension 
+    """Ensure that a 2-dimensional longitude, latitude) array is reordered using
+    DataTree.transpose() to create the correct dimension
     order in a new DataTree
 
     Tree structure in input_datatree:
@@ -266,11 +258,11 @@ def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latit
     |- science_two(longitude, latitude)
     |- latitude(lat)
     |- longitude(lon)
-       
+
     """
     description = "Test reordered (longitude, latitude) to (latitude, longitude)"
     variable_path = "science_two"
-    expected_path = ('latitude', 'longitude')
+    expected_path = ("latitude", "longitude")
 
     print(description)
     nc_xarray_tmp = reorder_dimensions(
@@ -281,8 +273,8 @@ def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latit
 
 
 def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
-    """Ensure that a 2-dimensional x, y array is reordered using 
-    DataTree.transpose() to create the correct dimension 
+    """Ensure that a 2-dimensional x, y array is reordered using
+    DataTree.transpose() to create the correct dimension
     order in a new DataTree
 
     Tree structure in input_datatree:
@@ -290,24 +282,22 @@ def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
     |- science_three(x, y)
     |- x(x)
     |- y(y)
-       
+
     """
 
     description = "Test reordered (x, y) to (y, x)"
     variable_path = "science_three"
-    expected_path = ('y', 'x')
+    expected_path = ("y", "x")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
-        input_datatree_reorder_2d_x_y, variable_path
-    )
+    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_x_y, variable_path)
 
     assert nc_xarray_tmp[variable_path].dims == expected_path
 
 
 def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
-    """Ensure that a 2-dimensional x_dim y_dim array is reordered using 
-    DataTree.transpose() to create the correct dimension 
+    """Ensure that a 2-dimensional x_dim y_dim array is reordered using
+    DataTree.transpose() to create the correct dimension
     order in a new DataTree
 
     Tree structure in input_datatree:
@@ -315,12 +305,12 @@ def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
     |- science_four(x-dim, y-dim)
     |- x-dim(x-dim)
     |- y-dim(y-dim)
-       
+
     """
 
     description = "Test reordered (x-dim, y-dim) to (y-dim, x-dim)"
     variable_path = "science_four"
-    expected_path = ('y-dim', 'x-dim')
+    expected_path = ("y-dim", "x-dim")
 
     print(description)
     nc_xarray_tmp = reorder_dimensions(
@@ -331,8 +321,8 @@ def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
 
 
 def test_reorder_3d_dimensions(input_datatree_reorder_3d):
-    """Ensure that a 3-dimensional array is reordered using 
-    DataTree.transpose() to create the correct dimension 
+    """Ensure that a 3-dimensional array is reordered using
+    DataTree.transpose() to create the correct dimension
     order in a new DataTree
 
     Tree structure in input_datatree:
@@ -356,38 +346,36 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
         [
             "Test reordered (lat, lon, time) to (time, lat, lon)",
             "science_one",
-            ('time', 'lat', 'lon'),
+            ("time", "lat", "lon"),
         ],
         [
             "Test reordered (latitude, longitude, time) to (time, latitude, longitude)",
             "group_one/science_two",
-            ('time', 'latitude', 'longitude'),
+            ("time", "latitude", "longitude"),
         ],
         [
             "Test reordered (x, y, z) to (z, y, x)",
             "group_two/science_three",
-            ('z', 'y', 'x'),
+            ("z", "y", "x"),
         ],
         [
             "Test reordered (x-dim, y-dim, z-dim) to (z-dim, y-dim, x-dim)",
             "group_two/group_three/science_four",
-            ('z-dim', 'y-dim', 'x-dim'),
+            ("z-dim", "y-dim", "x-dim"),
         ],
     ]
 
     for description, variable_path, expected_path in test_args:
         print(description)
-        nc_xarray_tmp = reorder_dimensions(
-            input_datatree_reorder_3d, variable_path
-        )
+        nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_3d, variable_path)
 
         assert nc_xarray_tmp[variable_path].dims == expected_path
 
 
 def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
-    """Ensure that the function handles exceptions when missing 
+    """Ensure that the function handles exceptions when missing
     coordinates are not parsed correctly.
-    
+
     Tree structure in input_datatree:
 
     |- science_one(lat, lon, time)
@@ -402,20 +390,32 @@ def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
           | science_four(x-dim, y-dim, z-dim)
     |- group_four
        |- science_five(abc, def, ghi)
+    |- group_five
+       |- science_six(y, x, '')
+    |- group_six
+       |- science_six(y, x, z, w)
 
     """
 
     test_args = [
         [
-            "Test Net2CogError (abc, def, ghi)",
+            "Test Net2CogError (abc, def, ghi) x,y not exisit",
             "group_four/science_five",
-            None
+            None,
+        ],
+        [
+            "Test Net2CogError (y, x, '') z is empty string",
+            "group_five/science_six",
+            None,
+        ],
+        [
+            "Test Net2CogError for 4 dimension (y, x, z, w)",
+            "group_six/science_seven",
+            None,
         ],
     ]
 
     for description, variable_path, expected_path in test_args:
         print(description)
         with pytest.raises(Net2CogError):
-            reorder_dimensions(
-                input_datatree_reorder_3d, variable_path
-            )
+            reorder_dimensions(input_datatree_reorder_3d, variable_path)
