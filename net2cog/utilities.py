@@ -51,9 +51,6 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
             "DataTree.dims{nc_xarray[variable_path].dims}",
         )
 
-    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
-    nc_xarray_tmp = nc_xarray.copy()
-
     z_dim = list(set(nc_xarray[variable_path].dims) - {x_dim[0], y_dim[0]})
     if len(z_dim) > 1:
         # 4 Dimension and up not supported
@@ -61,7 +58,11 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
             variable_path,
             f"Only 2D and 3D data arrays supported. {nc_xarray[variable_path].dims}",
         )
-    elif len(z_dim) == 0:
+
+    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
+    nc_xarray_tmp = nc_xarray.copy()
+
+    if len(z_dim) == 0:
         # Reorder 2 Dimension
         nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
             y_dim[0], x_dim[0]
