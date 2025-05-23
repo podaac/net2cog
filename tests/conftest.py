@@ -61,6 +61,18 @@ def spl2smp_nested_file_basename():
     return 'SMAP_L2_SM_P_00867_A_20150331T194640_R18290_001_subsetted_regridded.nc'
 
 
+@fixture(scope='session')
+def spl3smp_nested_3d_annotated_collection():
+    """Name of collection with a nested variable, used as a subdirectory in tests/data."""
+    return 'SPL3SMP_009'
+
+
+@fixture(scope='session')
+def spl3smp_nested_3d_annotated_file_basename():
+    """Basename of the SPL3SMP gridded file used as test input."""
+    return 'SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4'
+
+
 @fixture(scope='function')
 def temp_dir():
     """A temporary directory used for each test, to ensure tests are isolated."""
@@ -216,6 +228,35 @@ def spl2smp_nested_file(
     return temporary_data_file
 
 
+@fixture(scope="function")
+def spl3smp_nested_3d_annotated_file(
+    data_dir,
+    temp_dir,
+    spl3smp_nested_3d_annotated_collection,
+    spl3smp_nested_3d_annotated_file_basename,
+):
+    """Path to SPL3SMP gridded input file, copied into the test directory.
+
+    This file is already subsetted and to be a bounding box region of a single
+    science variable (Soil_Moisture_Retrieval_Data_AM/landcover_class and
+    Soil_Moisture_Retrieval_Data_PM/landcover_class) to
+    reduce file size in the repository.
+
+    """
+    temporary_data_file = Path(
+        join(temp_dir, spl3smp_nested_3d_annotated_file_basename)
+    )
+    copyfile(
+        join(
+            data_dir,
+            spl3smp_nested_3d_annotated_collection,
+            spl3smp_nested_3d_annotated_file_basename,
+        ),
+        temporary_data_file,
+    )
+    return temporary_data_file
+
+
 @fixture()
 def input_datatree():
     """Build Datatree to verify tests.
@@ -273,6 +314,219 @@ def input_datatree():
         attrs={
             "grid_mapping": "science_one",
         },
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_reorder_3d():
+    """Build Datatree with 3 dimensions to verify tests.
+
+    Tree structure in test:
+
+    |- science_one(lat, lon, time)
+    |- lat(lat)
+    |- lon(lon)
+    |- time(tim)
+    |- group_one
+       |- science_two(latitude, longitude, time)
+    |- group_two
+       |- science_three(x, y, z)
+        |- group_four
+          | science_four(x-dim, y-dim, z-dim)
+
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_one": (["lat", "lon", "time"], np.ones((2, 3, 4))),
+            },
+            coords={
+                "lat": ("lat", np.array([1, 2])),
+                "lon": ("lon", np.array([3, 4, 5])),
+                "time": ("tim", np.array([6, 7])),
+            },
+        )
+    )
+    dt["group_one"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_two": (["latitude", "longitude", "time"], np.ones((2, 3, 4))),
+            },
+            coords={
+                "latitude": ("lat", np.array([1, 2])),
+                "longitude": ("longitude", np.array([3, 4, 5])),
+                "time": ("tim", np.array([6, 7])),
+            },
+        )
+    )
+    dt["group_two"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_three": (["y", "x", "z"], np.ones((2, 3, 2))),
+            },
+            coords={
+                "y": ("y", np.array([1, 2])),
+                "x": ("x", np.array([3, 4, 5])),
+                "z": ("z", np.array([6, 7])),
+            },
+        )
+    )
+    dt["group_two/group_three"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_four": (["y-dim", "x-dim", "z-dim"], np.ones((2, 3, 2))),
+            },
+            coords={
+                "y-dim": ("y-dim", np.array([1, 2])),
+                "x-dim": ("x-dim", np.array([3, 4, 5])),
+                "z-dim": ("z-dim", np.array([6, 7])),
+            },
+        )
+    )
+    dt["group_four"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_five": (["abc", "def", "ghi"], np.ones((2, 2, 2))),
+            },
+            coords={
+                "abc": ("abc", np.array([1, 2])),
+                "def": ("def", np.array([3, 4])),
+                "ghi": ("ghi", np.array([5, 6])),
+            },
+        )
+    )
+    dt["group_five"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_six": (["y", "x", ""], np.ones((2, 2, 2))),
+            },
+            coords={
+                "y": ("y", np.array([1, 2])),
+                "x": ("x", np.array([3, 4])),
+                "": ("", np.array([5, 6])),
+            },
+        )
+    )
+
+    dt["group_six"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_seven": (["y", "x", "z", "w"], np.ones((2, 2, 2, 2))),
+            },
+            coords={
+                "y": ("y", np.array([1, 2])),
+                "x": ("x", np.array([3, 4])),
+                "z": ("z", np.array([5, 6])),
+                "w": ("w", np.array([7, 8])),
+            },
+        )
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_reorder_2d_lon_lat():
+    """Build 2 dimension lon, lat Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_one(lon, lat)
+    |- lat(lat)
+    |- lon(lon)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_one": (["lon", "lat"], np.ones((2, 3))),
+            },
+            coords={
+                "lon": ("lon", np.array([1, 2])),
+                "lat": ("lat", np.array([3, 4, 5])),
+            },
+        )
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_reorder_2d_longitude_latitude():
+    """Build 2 dimension longitude, latitude Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_two(longitude, latitude)
+    |- latitude(lat)
+    |- longitude(lon)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_two": (["longitude", "latitude"], np.ones((2, 3))),
+            },
+            coords={
+                "longitude": ("longitude", np.array([1, 2])),
+                "latitude": ("latitude", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_reorder_2d_x_y():
+    """Build 2 dimension x, y Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_three(x, y)
+    |- x(x)
+    |- y(y)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_three": (["x", "y"], np.ones((2, 3))),
+            },
+            coords={
+                "x": ("x", np.array([1, 2])),
+                "y": ("y", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_reorder_2d_x_dim_y_dim():
+    """Build 2 dimension x-dim, y-dim Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_four(x-dim, y-dim)
+    |- x-dim(x-dim)
+    |- y-dim(y-dim)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_four": (["x-dim", "y-dim"], np.ones((2, 3))),
+            },
+            coords={
+                "x-dim": ("x-dim", np.array([1, 2])),
+                "y-dim": ("y-dim", np.array([3, 4, 5])),
+            },
+        ),
     )
 
     return dt

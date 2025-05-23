@@ -20,10 +20,14 @@ import xarray as xr
 from rasterio import CRS
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
-from rioxarray.exceptions import DimensionError
+from rioxarray.exceptions import DimensionError, InvalidDimensionOrder
 from pyproj.crs import CRS as pyCRS
 from pyproj.exceptions import CRSError
-from net2cog.utilities import resolve_relative_path, Net2CogError
+from net2cog.utilities import (
+    resolve_relative_path,
+    Net2CogError,
+    reorder_dimensions,
+)
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 
@@ -99,6 +103,14 @@ def _write_cogtiff(
         except LookupError as err:
             logger.info("Variable %s cannot be converted to tif: %s", variable_path, err)
             raise Net2CogError(variable_path, err) from err
+        except InvalidDimensionOrder as dmerr:
+            try:
+                logger.info("%s: reorder dimensions...", dmerr)
+                nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
+                nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+            except (RuntimeError, Exception, Net2CogError) as runerr:
+                logger.info("Variable %s cannot be converted to tif: %s", variable_path, runerr)
+                raise Net2CogError(variable_path, runerr) from runerr
         except DimensionError as dmerr:
             try:
                 logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
