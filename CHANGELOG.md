@@ -7,14 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- [issues/50](https://github.com/podaac/net2cog/issues/50): Net2Cog handles the special case of SMAP data with (Y, X, Z) 3D dimensions. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
-- [issues/46](https://github.com/podaac/net2cog/issues/46): Adds support for output of the SMAP L2 Gridding service, which has dimensions named "x-dim" and "y-dim". This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
-- [issues/12](https://github.com/podaac/net2cog/issues/12): Adds support to update the CRS using information from different variable references. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
-
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
+
+## [1.0.0]
+### Changed
+- [issues/50](https://github.com/podaac/net2cog/issues/50): Net2Cog handles the special case of SMAP data with (Y, X, Z) 3D dimensions. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/46](https://github.com/podaac/net2cog/issues/46): Adds support for output of the SMAP L2 Gridding service, which has dimensions named "x-dim" and "y-dim". This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/12](https://github.com/podaac/net2cog/issues/12): Adds support to update the CRS using information from different variable references. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 
 ## [0.6.0]
 ### Changed
