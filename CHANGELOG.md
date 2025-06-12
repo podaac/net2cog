@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issues/54](https://github.com/podaac/net2cog/issues/54): Net2Cog cog_translate() does not support dtype=S1. Update code to only support dtype [ubyte|uint8|uint16|int16|uint32|int32|float32|float64]. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+
 ### Deprecated
 ### Removed
 ### Fixed
