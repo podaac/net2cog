@@ -358,3 +358,54 @@ def test_spl3smp_nested_variable_3d_annotated(
         basename(results[0]) == "Soil_Moisture_Retrieval_Data_AM_landcover_class.tif"
     ), "Incorrect output file name"
     assert cog_validate(pathlib.Path(results[0]))[0]
+
+
+def test_spl3smp_all_variable_3d_annotated(
+    temp_dir, logger, spl3smp_nested_3d_annotated_file
+):
+    """Verify a SPL3SMP all variable generate COG for supported dtype
+    [ubyte|uint8|uint16|int16|uint32|int32|float32|float64] only.
+
+    The string variables tb_time_utc_am and tb_time_utc_pm will not
+    generate COG files."
+
+    """
+    test_file = pathlib.Path(temp_dir, spl3smp_nested_3d_annotated_file)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        [],
+        logger,
+    )
+
+    # Check results are as expected:
+    assert len(results) == 8, "Incorrect number of output file names."
+
+    for entry in results:
+        if pathlib.Path(entry).is_file():
+            assert (
+                basename(entry[0])
+                != "Soil_Moisture_Retrieval_Data_AM_tb_time_utc_am.tif"
+            )
+            assert (
+                basename(entry[0])
+                != "Soil_Moisture_Retrieval_Data_AM_tb_time_utc_pm.tif"
+            )
+            assert cog_info(pathlib.Path(entry)).GEO.CRS == "EPSG:6933"
+            assert cog_validate(pathlib.Path(entry))
+
+
+def test_spl3smp_dtype_string_handle_exception(
+    temp_dir, logger, spl3smp_nested_3d_annotated_file
+):
+    """Verify a SPL3SMP variable with dtype=string (S1) throws exception"""
+    test_file = pathlib.Path(temp_dir, spl3smp_nested_3d_annotated_file)
+
+    with pytest.raises(Net2CogError):
+        netcdf_converter(
+            test_file,
+            pathlib.Path(temp_dir),
+            ["/Soil_Moisture_Retrieval_Data_AM/tb_time_seconds"],
+            logger,
+        )

@@ -30,6 +30,16 @@ from net2cog.utilities import (
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
+DTYPE_SUPPORTED = [
+    "ubyte",
+    "uint8",
+    "uint16",
+    "int16",
+    "uint32",
+    "int32",
+    "float32",
+    "float64",
+]
 
 
 def _rioxr_swapdims(netcdf_xarray):
@@ -177,6 +187,7 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
     return [
         data_variable for data_variable in data_variables
         if len(root_datatree[data_variable].shape) >= 2
+        and root_datatree[data_variable].dtype in DTYPE_SUPPORTED
     ]
 
 
