@@ -31,14 +31,14 @@ from net2cog.utilities import (
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 DTYPE_SUPPORTED = [
-    "ubyte",
-    "uint8",
-    "uint16",
-    "int16",
-    "uint32",
-    "int32",
-    "float32",
-    "float64",
+    'ubyte',
+    'uint8',
+    'uint16',
+    'int16',
+    'uint32',
+    'int32',
+    'float32',
+    'float64',
 ]
 
 
@@ -96,6 +96,14 @@ def _write_cogtiff(
         temp_file_name = path_join(tempdir, output_basename)
 
         try:
+            if nc_xarray[variable_path].dtype not in DTYPE_SUPPORTED:
+                logger.warning(
+                    f'Variable {variable_path}:({nc_xarray[variable_path].dtype}) '
+                    'is not a supported dtype',
+                )
+                print(f'Variable {variable_path}:({nc_xarray[variable_path].dtype}) is not a supported dtype')
+                return None
+
             if not has_spatial_dimensions(nc_xarray[variable_path]):
                 # The variable being processed does not have spatial dimensions:
                 raise Net2CogError(
@@ -187,7 +195,6 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
     return [
         data_variable for data_variable in data_variables
         if len(root_datatree[data_variable].shape) >= 2
-        and root_datatree[data_variable].dtype in DTYPE_SUPPORTED
     ]
 
 
@@ -322,6 +329,12 @@ def netcdf_converter(
             for output_file in raw_output_files
             if output_file is not None
         ]
+
+        if len(output_files) == 0:
+            raise Net2CogError(
+                var_list,
+                f'{var_list} variable(s) yields no results.'
+            )
     else:
         logger.info("Not a NetCDF file; Skipped file: %s", netcdf_file)
         output_files = []

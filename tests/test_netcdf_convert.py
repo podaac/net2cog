@@ -115,8 +115,8 @@ def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
     """Verify a request for a non-spatial variable raises expected exception."""
     test_file = pathlib.Path(temp_dir, nested_file)
     expected_exception = (
-        'EASE2_global_projection does not have spatial dimensions '
-        'such as lat / lon or x / y'
+        "\\['EASE2_global_projection'\\] variable\\(s\\) "
+        "yields no results."
     )
 
     with pytest.raises(Net2CogError, match=expected_exception):
@@ -406,6 +406,70 @@ def test_spl3smp_dtype_string_handle_exception(
         netcdf_converter(
             test_file,
             pathlib.Path(temp_dir),
-            ["/Soil_Moisture_Retrieval_Data_AM/tb_time_seconds"],
+            ["/Soil_Moisture_Retrieval_Data_AM/tb_time_utc"],
             logger,
         )
+
+
+@pytest.mark.parametrize(
+    ['in_bands'],
+    [
+        [
+            [
+                'Soil_Moisture_Retrieval_Data_AM/landcover_class',
+                'Soil_Moisture_Retrieval_Data_AM/tb_time_utc',
+                'Soil_Moisture_Retrieval_Data_PM/landcover_class_pm',
+                'Soil_Moisture_Retrieval_Data_PM/tb_time_utc_pm',
+            ]
+        ]
+    ],
+)
+def test_spl3smp_multiple_variable_selection_without_dtype_string(
+    in_bands, temp_dir, spl3smp_nested_3d_annotated_file, logger
+):
+    """
+    Verify non supported dtypes are not are being converted to COG
+
+    Input in_bands: [
+                        'Soil_Moisture_Retrieval_Data_AM/landcover_class',
+                        'Soil_Moisture_Retrieval_Data_AM/tb_time_utc',
+                        'Soil_Moisture_Retrieval_Data_PM/landcover_class_pm',
+                        'Soil_Moisture_Retrieval_Data_PM/tb_time_utc_pm'
+                    ]
+
+    Remove unsupported dtypes:
+                    [
+                        'Soil_Moisture_Retrieval_Data_AM/tb_time_utc',
+                        'Soil_Moisture_Retrieval_Data_PM/tb_time_utc_pm'
+                    ]
+
+    Generated COG output_in_band:
+                    [
+                        'Soil_Moisture_Retrieval_Data_AM_landcover_class.tif',
+                        'Soil_Moisture_Retrieval_Data_PM_landcover_class_pm.tif'
+                    ]
+
+    """
+    in_bands = sorted(in_bands)
+    test_file = pathlib.Path(temp_dir, spl3smp_nested_3d_annotated_file)
+
+    results = netcdf_converter(test_file, pathlib.Path(temp_dir), in_bands, logger)
+
+    assert len(results) == 2, "Incorrect number of output file names."
+
+    in_bands = [in_band.lstrip("/").replace("/", "_") for in_band in in_bands]
+
+    out_bands = []
+    for entry in results:
+        if pathlib.Path(entry).is_file():
+            band_completed = splitext(basename(entry))[0]
+            out_bands.append(band_completed)
+            assert cog_info(pathlib.Path(entry)).GEO.CRS == 'EPSG:6933'
+            assert cog_validate(pathlib.Path(entry))
+
+    out_bands.sort()
+    output_in_band = [
+        'Soil_Moisture_Retrieval_Data_AM_landcover_class',
+        'Soil_Moisture_Retrieval_Data_PM_landcover_class_pm',
+    ]
+    assert output_in_band == out_bands, 'Incorrect output file names.'
