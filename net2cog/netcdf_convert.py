@@ -101,7 +101,6 @@ def _write_cogtiff(
                     f'Variable {variable_path}:({nc_xarray[variable_path].dtype}) '
                     'is not a supported dtype',
                 )
-                print(f'Variable {variable_path}:({nc_xarray[variable_path].dtype}) is not a supported dtype')
                 return None
 
             if not has_spatial_dimensions(nc_xarray[variable_path]):
