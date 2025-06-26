@@ -325,11 +325,6 @@ def netcdf_converter(
             if output_file is not None
         ]
 
-        if len(output_files) == 0:
-            raise Net2CogError(
-                var_list,
-                f'{var_list} variable(s) yields no results.'
-            )
     else:
         logger.info("Not a NetCDF file; Skipped file: %s", netcdf_file)
         output_files = []
