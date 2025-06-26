@@ -96,13 +96,6 @@ def _write_cogtiff(
         temp_file_name = path_join(tempdir, output_basename)
 
         try:
-            if nc_xarray[variable_path].dtype not in DTYPE_SUPPORTED:
-                logger.warning(
-                    f'Variable {variable_path}:({nc_xarray[variable_path].dtype}) '
-                    'is not a supported dtype',
-                )
-                return None
-
             if not has_spatial_dimensions(nc_xarray[variable_path]):
                 # The variable being processed does not have spatial dimensions:
                 raise Net2CogError(
@@ -117,7 +110,7 @@ def _write_cogtiff(
                 variable_path,
                 f"No variable named '{variable_path}'."
             ) from error
-        except LookupError as err:
+        except (LookupError, TypeError) as err:
             logger.info("Variable %s cannot be converted to tif: %s", variable_path, err)
             raise Net2CogError(variable_path, err) from err
         except InvalidDimensionOrder as dmerr:
@@ -181,7 +174,8 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
     list[str]
         A list of paths to all variables in the `data_vars` property of any
         node in the DataTree. These variables are filtered to remove any
-        variables that are 1-D or attribute-only (e.g., CRS definitions).
+        variables that are 1-D, attribute-only (e.g., CRS definitions),
+        dtype = string(S1/S2), or variable without dimensions.
 
     """
     data_variables = []
@@ -194,6 +188,8 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
     return [
         data_variable for data_variable in data_variables
         if len(root_datatree[data_variable].shape) >= 2
+        and root_datatree[data_variable].dtype in DTYPE_SUPPORTED
+        and has_spatial_dimensions(root_datatree[data_variable])
     ]
 
 
