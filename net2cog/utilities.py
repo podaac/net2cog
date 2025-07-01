@@ -223,15 +223,16 @@ def is_valid_shape(
         True variables.shape >= 2
 
     """
-    if len(variable.shape) < 2:
-        logger.info(
-            "Invalid shape %s for variable: %s. Skipping COG generation for this variable",
-            variable.shape,
-            variable_path,
-        )
-        return False
+    if len(variable.shape) >= 2:
+        return True
 
-    return True
+    logger.info(
+        "Invalid shape %s for variable: %s. Skipping COG generation for this variable",
+        variable.shape,
+        variable_path,
+    )
+
+    return False
 
 
 def is_valid_dtype(
@@ -255,15 +256,16 @@ def is_valid_dtype(
         True variables.dtype is ubyte|int|float
 
     """
-    if variable.dtype not in DTYPE_SUPPORTED:
-        logger.info(
-            "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
-            variable.shape,
-            variable_path,
-        )
-        return False
+    if variable.dtype in DTYPE_SUPPORTED:
+        return True
 
-    return True
+    logger.info(
+        "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
+        variable.shape,
+        variable_path,
+    )
+
+    return False
 
 
 def is_valid_spatial_dimensions(
@@ -299,10 +301,11 @@ def is_valid_spatial_dimensions(
         or {"x-dim", "y-dim"}.issubset(set(variable.dims))
     ):
         return True
-    else:
-        logger.info(
-            "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
-            variable.shape,
-            variable_path,
-        )
-        return False
+
+    logger.info(
+        "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
+        variable.shape,
+        variable_path,
+    )
+
+    return False
