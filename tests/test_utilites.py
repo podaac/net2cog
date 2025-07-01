@@ -7,11 +7,14 @@ Test the net2cog utilites functionality.
 """
 
 import pytest
+import numpy as np
+import xarray as xr
 from net2cog.netcdf_convert import Net2CogError
 from net2cog.utilities import (
     resolve_relative_path,
     is_variable_in_datatree,
     reorder_dimensions,
+    is_valid_spatial_dimensions,
 )
 
 
@@ -419,3 +422,69 @@ def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
         print(description)
         with pytest.raises(Net2CogError):
             reorder_dimensions(input_datatree_reorder_3d, variable_path)
+
+
+@pytest.mark.parametrize(
+    'dimensions',
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+)
+def test_is_valid_spatial_dimensions_present(dimensions, logger):
+    """Verify returns True for variable with spatial dimensions."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': ([dimensions[0], dimensions[1]], np.ones((2, 4)))},
+            coords={
+                dimensions[0]: (dimensions[0], np.array([1, 2])),
+                dimensions[1]: (dimensions[1], np.array([3, 4, 5, 6])),
+            },
+        ),
+    )
+    assert is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+@pytest.mark.parametrize(
+    'dimensions',
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+)
+def test_is_valid_spatial_dimensions_and_others_present(dimensions, logger):
+    """Verify returns True, when spatial dimensions and others are present."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                'science': (['time', dimensions[0], dimensions[1]], np.ones((1, 2, 4)))
+            },
+            coords={
+                'time': ('time', np.array([0])),
+                dimensions[0]: (dimensions[0], np.array([1, 2])),
+                dimensions[1]: (dimensions[1], np.array([3, 4, 5, 6])),
+            },
+        ),
+    )
+    assert is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+@pytest.mark.parametrize('dimension', ['lat', 'latitude', 'x', 'x-dim'])
+def test_is_valid_spatial_dimensions_incomplete(dimension, logger):
+    """Verify returns False when only one spatial dimension present."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': ([dimension], np.ones((4)))},
+            coords={
+                dimension: (dimension, np.array([1, 2, 3, 4])),
+            },
+        ),
+    )
+    assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+def test_is_valid_spatial_dimensions_absent(logger):
+    """Verify returns False for variable without spatial dimensions."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': (['time'], np.ones(4))},
+            coords={
+                'time': ('time', np.array([1, 2, 3, 4])),
+            },
+        ),
+    )
+    assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
