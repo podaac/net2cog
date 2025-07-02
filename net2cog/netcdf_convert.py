@@ -27,6 +27,9 @@ from net2cog.utilities import (
     resolve_relative_path,
     Net2CogError,
     reorder_dimensions,
+    is_valid_shape,
+    is_valid_dtype,
+    is_valid_spatial_dimensions,
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -86,7 +89,11 @@ def _write_cogtiff(
         temp_file_name = path_join(tempdir, output_basename)
 
         try:
-            if not has_spatial_dimensions(nc_xarray[variable_path]):
+            if not is_valid_spatial_dimensions(
+                nc_xarray[variable_path],
+                variable_path,
+                logger
+            ):
                 # The variable being processed does not have spatial dimensions:
                 raise Net2CogError(
                     variable_path,
@@ -100,7 +107,7 @@ def _write_cogtiff(
                 variable_path,
                 f"No variable named '{variable_path}'."
             ) from error
-        except LookupError as err:
+        except (LookupError, TypeError) as err:
             logger.info("Variable %s cannot be converted to tif: %s", variable_path, err)
             raise Net2CogError(variable_path, err) from err
         except InvalidDimensionOrder as dmerr:
@@ -151,7 +158,10 @@ def _write_cogtiff(
     return output_file_name
 
 
-def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
+def get_all_data_variables(
+    root_datatree: xr.DataTree,
+    logger: Logger,
+) -> list[str]:
     """Traverse tree and retrieve all data variables in all groups.
 
     Parameters
@@ -164,7 +174,8 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
     list[str]
         A list of paths to all variables in the `data_vars` property of any
         node in the DataTree. These variables are filtered to remove any
-        variables that are 1-D or attribute-only (e.g., CRS definitions).
+        variables that are 1-D, attribute-only (e.g., CRS definitions),
+        dtype = string(S1/S2), or variable without dimensions.
 
     """
     data_variables = []
@@ -175,37 +186,14 @@ def get_all_data_variables(root_datatree: xr.DataTree) -> list[str]:
         ])
 
     return [
-        data_variable for data_variable in data_variables
-        if len(root_datatree[data_variable].shape) >= 2
+        data_variable
+        for data_variable in data_variables
+        if is_valid_shape(root_datatree[data_variable], data_variable, logger)
+        and is_valid_dtype(root_datatree[data_variable], data_variable, logger)
+        and is_valid_spatial_dimensions(
+            root_datatree[data_variable], data_variable, logger
+        )
     ]
-
-
-def has_spatial_dimensions(variable: xr.DataArray | xr.DataTree) -> bool:
-    """Ensure variable has required spatial dimensions.
-
-    Parameters
-    ----------
-    variable : xarray.DataArray
-        A variable within the NetCDF-4 file, as represented in xarray.
-
-    Returns
-    -------
-    bool
-        Value denoting if the variable has dimensions including one of the
-        following sets of spatial dimension names:
-
-            * {"lon", "lat"}
-            * {"longitude", "latitude"}
-            * {"x", "y"}
-            * {"x-dim", "y-dim"}
-
-    """
-    return (
-        {"lon", "lat"}.issubset(set(variable.dims))
-        or {"longitude", "latitude"}.issubset(set(variable.dims))
-        or {"x", "y"}.issubset(set(variable.dims))
-        or {"x-dim", "y-dim"}.issubset(set(variable.dims))
-    )
 
 
 def get_crs_from_grid_mapping(
@@ -299,7 +287,7 @@ def netcdf_converter(
         if not var_list:
             # Empty list means "all" variables, so get all variables in
             # the `xarray.DataTree`.
-            var_list = get_all_data_variables(input_datatree)
+            var_list = get_all_data_variables(input_datatree, logger)
 
         raw_output_files = [
             _write_cogtiff(output_directory, input_datatree, variable_name, logger)
@@ -311,6 +299,7 @@ def netcdf_converter(
             for output_file in raw_output_files
             if output_file is not None
         ]
+
     else:
         logger.info("Not a NetCDF file; Skipped file: %s", netcdf_file)
         output_files = []

@@ -6,10 +6,21 @@ utilties.py
 Utility functions for use within the net2cog service.
 """
 
+from logging import Logger
 import xarray as xr
 
 X_COORDINATE = ("lon", "longitude", "x", "x-dim")
 Y_COORDINATE = ("lat", "latitude", "y", "y-dim")
+DTYPE_SUPPORTED = [
+    'ubyte',
+    'uint8',
+    'uint16',
+    'int16',
+    'uint32',
+    'int32',
+    'float32',
+    'float64',
+]
 
 
 class Net2CogError(Exception):
@@ -189,3 +200,112 @@ def construct_absolute_path(group_path: str, reference: str) -> str:
 
     absolute_path = group_path_pieces + [reference]
     return "/".join(absolute_path)
+
+
+def is_valid_shape(
+    variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
+) -> bool:
+    """Ensure variable has required dimensions.
+
+    Parameters
+    ----------
+    variable : xarray.DataArray | xarray.DataTree
+        A variable within the NetCDF-4 file, as represented in xarray.
+    variable_path: str
+        Full of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+
+    Returns
+    -------
+    bool
+        False variables.shape < 2
+        True variables.shape >= 2
+
+    """
+    if len(variable.shape) >= 2:
+        return True
+
+    logger.info(
+        "Invalid shape %s for variable: %s. Skipping COG generation for this variable",
+        variable.shape,
+        variable_path,
+    )
+
+    return False
+
+
+def is_valid_dtype(
+    variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
+) -> bool:
+    """Ensure variable has required dtype.
+
+    Parameters
+    ----------
+    variable : xarray.DataArray | xarray.DataTree
+        A variable within the NetCDF-4 file, as represented in xarray.
+    variable_path: str
+        Full of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+
+    Returns
+    -------
+    bool
+        False variables.dtype is string (S1|S2)
+        True variables.dtype is ubyte|int|float
+
+    """
+    if variable.dtype in DTYPE_SUPPORTED:
+        return True
+
+    logger.info(
+        "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
+        variable.dtype,
+        variable_path,
+    )
+
+    return False
+
+
+def is_valid_spatial_dimensions(
+    variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
+) -> bool:
+    """Ensure variable has required spatial dimensions.
+
+    Parameters
+    ----------
+    variable : xarray.DataArray | xarray.DataTree
+        A variable within the NetCDF-4 file, as represented in xarray.
+    variable_path: str
+        Full of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+
+    Returns
+    -------
+    bool
+        Value denoting if the variable has dimensions including one of the
+        following sets of spatial dimension names:
+
+            * {"lon", "lat"}
+            * {"longitude", "latitude"}
+            * {"x", "y"}
+            * {"x-dim", "y-dim"}
+
+    """
+    if (
+        {"lon", "lat"}.issubset(set(variable.dims))
+        or {"longitude", "latitude"}.issubset(set(variable.dims))
+        or {"x", "y"}.issubset(set(variable.dims))
+        or {"x-dim", "y-dim"}.issubset(set(variable.dims))
+    ):
+        return True
+
+    logger.info(
+        "Unable to identify spatial dimensions from [%s] for variable: %s. Skipping COG generation for this variable",
+        variable.dims,
+        variable_path,
+    )
+
+    return False
