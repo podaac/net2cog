@@ -261,7 +261,7 @@ def is_valid_dtype(
 
     logger.info(
         "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
-        variable.shape,
+        variable.dtype,
         variable_path,
     )
 
@@ -303,8 +303,8 @@ def is_valid_spatial_dimensions(
         return True
 
     logger.info(
-        "Invalid dtype %s for variable: %s. Skipping COG generation for this variable",
-        variable.shape,
+        "Unable to identify spatial dimensions from [%s] for variable: %s. Skipping COG generation for this variable",
+        variable.dims,
         variable_path,
     )
 
