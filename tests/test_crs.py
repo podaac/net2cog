@@ -32,7 +32,7 @@ def test_crs_nested_path_same_group(temp_dir, logger, spl2smp_nested_file):
         input_datatree, "Soil_Moisture_Retrieval_Data/vegetation_water_content", logger
     )
 
-    assert output_crs.to_epsg() == test_crs
+    assert output_crs.to_epsg() == test_crs.to_epsg()
     assert output_crs.is_projected
 
 

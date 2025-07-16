@@ -239,7 +239,7 @@ def get_crs_from_grid_mapping(
                 logger.info("CRS: %s", crs)
         except CRSError as error:
             raise Net2CogError(
-                crs, f"An unsupported target CRS. Use default CRS '{crs}'."
+                variable_path, f"An unsupported target CRS. Use default CRS '{crs}'."
             ) from error
 
     return crs

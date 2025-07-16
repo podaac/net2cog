@@ -256,7 +256,7 @@ def is_valid_dtype(
         True variables.dtype is ubyte|int|float
 
     """
-    if variable.dtype in DTYPE_SUPPORTED:
+    if variable.dtype.name in DTYPE_SUPPORTED:
         return True
 
     logger.info(
