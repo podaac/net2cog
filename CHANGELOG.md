@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- [issues/54](https://github.com/podaac/net2cog/issues/54): Update code to not fail on invalid dtypes, log an informative message and continue to process other variables if given. Valid dtypes: [ubyte|uint8|uint16|int16|uint32|int32|float32|float64]. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
-
 ### Deprecated
 ### Removed
 ### Fixed
 ### Security
 
 ## [1.0.0]
+### Fixed
+- [issues/54](https://github.com/podaac/net2cog/issues/54): Update code to not fail on invalid dtypes, log an informative message and continue to process other variables if given. Valid dtypes: [ubyte|uint8|uint16|int16|uint32|int32|float32|float64]. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 ### Changed
 - [issues/50](https://github.com/podaac/net2cog/issues/50): Net2Cog handles the special case of SMAP data with (Y, X, Z) 3D dimensions. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
 - [issues/46](https://github.com/podaac/net2cog/issues/46): Adds support for output of the SMAP L2 Gridding service, which has dimensions named "x-dim" and "y-dim". This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
