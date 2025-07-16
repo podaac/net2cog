@@ -59,7 +59,7 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
         raise Net2CogError(
             variable_path,
             f"{X_COORDINATE} or {Y_COORDINATE} dimensions not found in "
-            "DataTree.dims{nc_xarray[variable_path].dims}",
+            f"DataTree.dims {nc_xarray[variable_path].dims}",
         )
 
     z_dim = list(set(nc_xarray[variable_path].dims) - {x_dim[0], y_dim[0]})
