@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "net2cog"
-version = "0.6.0"
+version = "1.0.0rc4"
 description = "NetCDF to COG Conversion Service"
 authors = ["podaac <podaac@jpl.nasa.gov>"]
 license = "Apache-2.0"

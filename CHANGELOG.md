@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [1.0.0]
+### Fixed
+- [issues/54](https://github.com/podaac/net2cog/issues/54): Update code to not fail on invalid dtypes, log an informative message and continue to process other variables if given. Valid dtypes: [ubyte|uint8|uint16|int16|uint32|int32|float32|float64]. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+### Changed
+- [issues/50](https://github.com/podaac/net2cog/issues/50): Net2Cog handles the special case of SMAP data with (Y, X, Z) 3D dimensions. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/46](https://github.com/podaac/net2cog/issues/46): Adds support for output of the SMAP L2 Gridding service, which has dimensions named "x-dim" and "y-dim". This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+- [issues/12](https://github.com/podaac/net2cog/issues/12): Adds support to update the CRS using information from different variable references. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
+
 ## [0.6.0]
 ### Changed
 - [issues/37](https://github.com/podaac/net2cog/issues/37): Migrated to use `xarray.DataTree`, in order to provide support for granules with hierarchical structure. This also partially addresses [issues/35](https://github.com/podaac/net2cog/issues/35).
@@ -30,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PCESA-2309 - Updated Jenkins to include building and pushing to ECC_NEXUS
 
 ## [0.2.0-alpha.14] - 3 September 2020
-### Changed 
+### Changed
 - PCESA-2272 - Updated to use the new SNS Baseworker, Job Service, and Staging Service
 
 ## [0.2.0-alpha.12] - 8 June 2020
@@ -39,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0-alpha.11] - 11 May 2020
 ### Added
-- Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing. 
+- Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing.
 
 
 [Unreleased]: https://github.com/podaac/net2cog/compare/v0.6.0...HEAD
