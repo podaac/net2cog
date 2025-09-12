@@ -98,7 +98,7 @@ def _write_cogtiff(
                 raise Net2CogError(
                     variable_path,
                     f'{variable_path} does not have spatial dimensions such as '
-                    'lat / lon or x / y',
+                    'lat/lon, x/y, latitude/longitude, x-dim/y-dim, or XDim/YDim',
                 )
             nc_xarray[variable_path].rio.to_raster(temp_file_name)
         except KeyError as error:

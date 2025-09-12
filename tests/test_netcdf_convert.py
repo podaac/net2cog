@@ -115,7 +115,7 @@ def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
     test_file = pathlib.Path(temp_dir, nested_file)
     expected_exception = (
         'EASE2_global_projection does not have spatial dimensions '
-        'such as lat / lon or x / y'
+        'such as lat/lon, x/y, latitude/longitude, x-dim/y-dim, or XDim/YDim'
     )
 
     with pytest.raises(Net2CogError, match=expected_exception):

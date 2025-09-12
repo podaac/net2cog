@@ -9,8 +9,8 @@ Utility functions for use within the net2cog service.
 from logging import Logger
 import xarray as xr
 
-X_COORDINATE = ("lon", "longitude", "x", "x-dim")
-Y_COORDINATE = ("lat", "latitude", "y", "y-dim")
+X_COORDINATE = ("lon", "longitude", "x", "x-dim", "XDim")
+Y_COORDINATE = ("lat", "latitude", "y", "y-dim", "YDim")
 DTYPE_SUPPORTED = [
     'ubyte',
     'uint8',
@@ -272,6 +272,7 @@ def is_valid_spatial_dimensions(
     variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
 ) -> bool:
     """Ensure variable has required spatial dimensions.
+    Convert the string to lowercase before performing the comparison
 
     Parameters
     ----------
@@ -292,13 +293,16 @@ def is_valid_spatial_dimensions(
             * {"longitude", "latitude"}
             * {"x", "y"}
             * {"x-dim", "y-dim"}
+            * {"XDim", "YDim"}  (Convert to lowercase before compare)
 
     """
+    variable_dims = [dim.lower() for dim in variable.dims]
     if (
-        {"lon", "lat"}.issubset(set(variable.dims))
-        or {"longitude", "latitude"}.issubset(set(variable.dims))
-        or {"x", "y"}.issubset(set(variable.dims))
-        or {"x-dim", "y-dim"}.issubset(set(variable.dims))
+        {"lon", "lat"}.issubset(set(variable_dims))
+        or {"longitude", "latitude"}.issubset(set(variable_dims))
+        or {"x", "y"}.issubset(set(variable_dims))
+        or {"x-dim", "y-dim"}.issubset(set(variable_dims))
+        or {"xdim", "ydim"}.issubset(set(variable_dims))
     ):
         return True
 

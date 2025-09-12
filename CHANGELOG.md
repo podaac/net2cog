@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issues/57](https://github.com/podaac/net2cog/issues/54): Update code to support MODIS V7 variable dimension `XDim` and `YDim`.
 ### Deprecated
 ### Removed
 ### Fixed
