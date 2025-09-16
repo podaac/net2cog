@@ -323,7 +323,7 @@ def is_valid_spatial_dimensions(
         variable,
         variable_path,
         logger
-    ):        
+    ):
         logger.info(
             "Unable to identify spatial dimensions from [%s] for variable: %s.\
             Skipping COG generation for this variable",
@@ -359,7 +359,7 @@ def is_valid_spatial_dimensions_with_standard_name_units(
     """
     if not variable.coords:
         return False
-    
+
     for coord_name, coord in variable.coords.items():
         standard_name = coord.attrs.get('standard_name')
         units = coord.attrs.get('units')
