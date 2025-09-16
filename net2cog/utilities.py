@@ -21,6 +21,18 @@ DTYPE_SUPPORTED = [
     'float32',
     'float64',
 ]
+DIM_STANDARD_NAME = [
+    'projection_x_coordinate',
+    'projection_y_coordinate',
+    'longitude',
+    'latitude',
+]
+DIM_UNITS = [
+    'degrees_east',
+    'degrees_west',
+    'degrees_north',
+    'm',
+]
 
 
 class Net2CogError(Exception):
@@ -306,10 +318,59 @@ def is_valid_spatial_dimensions(
     ):
         return True
 
-    logger.info(
-        "Unable to identify spatial dimensions from [%s] for variable: %s. Skipping COG generation for this variable",
-        variable.dims,
+    # Fallback: check CF-compliant standard_name and units
+    if not is_valid_spatial_dimensions_with_standard_name_units(
+        variable,
         variable_path,
-    )
+        logger
+    ):        
+        logger.info(
+            "Unable to identify spatial dimensions from [%s] for variable: %s.\
+            Skipping COG generation for this variable",
+            variable.dims,
+            variable_path,
+        )
 
-    return False
+        return False
+
+    return True
+
+
+def is_valid_spatial_dimensions_with_standard_name_units(
+    variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
+) -> bool:
+    """Ensure spatial dimensions have valid CF-compliant standard_name and units.
+
+    Parameters
+    ----------
+    variable : xarray.DataArray | xarray.DataTree
+        A variable within the NetCDF-4 file, as represented in xarray.
+    variable_path: str
+        Full of the variable within the file to convert.
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+
+    Returns
+    -------
+    bool
+        True: True if all coordinate dimensions have valid standard_name and units.
+        False: otherwise.
+
+    """
+    if not variable.coords:
+        return False
+    
+    for coord_name, coord in variable.coords.items():
+        standard_name = coord.attrs.get('standard_name')
+        units = coord.attrs.get('units')
+
+        if standard_name not in DIM_STANDARD_NAME or units not in DIM_UNITS:
+            logger.info(
+                "The standard_name and units dimensions [%s] for variable %s \
+                do not comply with the CF (Climate and Forecast) conventions",
+                coord_name,
+                variable_path,
+            )
+            return False
+
+    return True
