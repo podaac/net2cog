@@ -362,7 +362,7 @@ def is_valid_spatial_dimensions_with_standard_name_units(
 
         if standard_name is None or units is None:
             return False
-        
+
         if standard_name not in DIM_STANDARD_NAME_AND_UNITS:
             logger.info(
                 "The standard_name [%s] for dimensions [%s] in variable: %s \
