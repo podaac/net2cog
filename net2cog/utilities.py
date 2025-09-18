@@ -21,18 +21,14 @@ DTYPE_SUPPORTED = [
     'float32',
     'float64',
 ]
-DIM_STANDARD_NAME = [
-    'projection_x_coordinate',
-    'projection_y_coordinate',
-    'longitude',
-    'latitude',
-]
-DIM_UNITS = [
-    'degrees_east',
-    'degrees_west',
-    'degrees_north',
-    'm',
-]
+DIM_STANDARD_NAME_AND_UNITS = {
+    'projection_x_coordinate': ['m', 'meters', 'meter'],
+    'projection_y_coordinate': ['m', 'meters', 'meter'],
+    'projection_x_angular_coordinate': ['m', 'meters', 'meter'],
+    'projection_y_angular_coordinate': ['m', 'meters', 'meter'],
+    'latitude': ['degrees_north', 'degree_north', 'degree_N', 'degreeN', 'degreesN'],
+    'longitude': ['degrees_east', 'degree_east', 'degree_E', 'degrees_E', 'degreeE', 'degreesE'],
+}
 
 
 class Net2CogError(Exception):
@@ -364,10 +360,24 @@ def is_valid_spatial_dimensions_with_standard_name_units(
         standard_name = coord.attrs.get('standard_name')
         units = coord.attrs.get('units')
 
-        if standard_name not in DIM_STANDARD_NAME or units not in DIM_UNITS:
+        if standard_name is None or units is None:
+            return False
+        
+        if standard_name not in DIM_STANDARD_NAME_AND_UNITS:
             logger.info(
-                "The standard_name and units dimensions [%s] for variable %s \
+                "The standard_name [%s] for dimensions [%s] in variable: %s \
                 do not comply with the CF (Climate and Forecast) conventions",
+                standard_name,
+                coord_name,
+                variable_path,
+            )
+            return False
+
+        if units not in DIM_STANDARD_NAME_AND_UNITS[standard_name]:
+            logger.info(
+                "The units [%s] for dimensions [%s] in variable: %s \
+                do not comply with the CF (Climate and Forecast) conventions",
+                units,
                 coord_name,
                 variable_path,
             )
