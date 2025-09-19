@@ -365,7 +365,7 @@ def is_valid_spatial_dimensions_with_standard_name_units(
 
         if standard_name not in DIM_STANDARD_NAME_AND_UNITS:
             logger.info(
-                "The standard_name [%s] for dimensions [%s] in variable: %s \
+                "The standard_name [%s] for coordinate [%s] in variable: %s \
                 do not comply with the CF (Climate and Forecast) conventions",
                 standard_name,
                 coord_name,
@@ -373,9 +373,9 @@ def is_valid_spatial_dimensions_with_standard_name_units(
             )
             return False
 
-        if units not in DIM_STANDARD_NAME_AND_UNITS[standard_name]:
+        if units not in DIM_STANDARD_NAME_AND_UNITS.get(standard_name, set()):
             logger.info(
-                "The units [%s] for dimensions [%s] in variable: %s \
+                "The units [%s] for coordinate [%s] in variable: %s \
                 do not comply with the CF (Climate and Forecast) conventions",
                 units,
                 coord_name,
