@@ -15,6 +15,7 @@ from net2cog.utilities import (
     is_variable_in_datatree,
     reorder_dimensions,
     is_valid_spatial_dimensions,
+    is_valid_spatial_dimensions_with_standard_name_units,
 )
 
 
@@ -323,6 +324,31 @@ def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
     assert nc_xarray_tmp[variable_path].dims == expected_path
 
 
+def test_reorder_2d_XDim_YDim(input_datatree_2d_XDim_YDim):
+    """Ensure that a 2-dimensional XDim YDim array is reordered using
+    DataTree.transpose() to create the correct dimension
+    order in a new DataTree
+
+    Tree structure in input_datatree:
+
+    |- science_five(XDim, YDim)
+    |- XDim
+    |- YDim
+
+    """
+
+    description = "Test reordered (XDim, YDim) to (YDim, XDim)"
+    variable_path = "science_one"
+    expected_path = ("YDim", "XDim")
+
+    print(description)
+    nc_xarray_tmp = reorder_dimensions(
+        input_datatree_2d_XDim_YDim, variable_path
+    )
+
+    assert nc_xarray_tmp[variable_path].dims == expected_path
+
+
 def test_reorder_3d_dimensions(input_datatree_reorder_3d):
     """Ensure that a 3-dimensional array is reordered using
     DataTree.transpose() to create the correct dimension
@@ -342,6 +368,8 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
           | science_four(x-dim, y-dim, z-dim)
     |- group_four
        |- science_five(abc, def, ghi)
+    |- group_seven
+       |- science_eight(XDim, YDim, ZDim)
 
     """
 
@@ -365,6 +393,11 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
             "Test reordered (x-dim, y-dim, z-dim) to (z-dim, y-dim, x-dim)",
             "group_two/group_three/science_four",
             ("z-dim", "y-dim", "x-dim"),
+        ],
+        [
+            "Test reordered (XDim, YDim, ZDim) to (ZDim, YDim, XDim)",
+            "group_seven/science_eight",
+            ("ZDim", "YDim", "XDim"),
         ],
     ]
 
@@ -426,7 +459,8 @@ def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim'],
+     ['XDim', 'YDim']],
 )
 def test_is_valid_spatial_dimensions_present(dimensions, logger):
     """Verify returns True for variable with spatial dimensions."""
@@ -444,7 +478,8 @@ def test_is_valid_spatial_dimensions_present(dimensions, logger):
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim'],
+     ['XDim', 'YDim']],
 )
 def test_is_valid_spatial_dimensions_and_others_present(dimensions, logger):
     """Verify returns True, when spatial dimensions and others are present."""
@@ -474,6 +509,7 @@ def test_is_valid_spatial_dimensions_incomplete(dimension, logger):
             },
         ),
     )
+    print(f'Test variable.dim returns False when only one spatial dimension present')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
 
 
@@ -487,4 +523,161 @@ def test_is_valid_spatial_dimensions_absent(logger):
             },
         ),
     )
+    print(f'For variables (time) that do not have spatial dimensions, test returns False')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+def test_is_valid_spatial_dimensions_XDim_YDim(input_datatree_2d_XDim_YDim, logger):
+    """Verify returns True, when spatial dimensions and others are present.
+    
+        |- science_one(XDim, YDim)
+        |- XDim
+        |- YDim
+        |- group_one
+            |- science_two(xDim, yDim)
+        |- group_two
+            |- science_three(Xdim, Ydim)
+        |- group_three
+            |- science_four(XDIM, YDIM)
+        |- group_four
+            |- science_five(xdim, ydim)
+
+    """
+    test_args = [
+        [
+            "Test XDim/YDim is valid spatial dimensions",
+            "science_one",
+            ("XDim", "YDim"),
+        ],
+        [
+            "Test xDim/yDim is valid spatial dimensions",
+            "group_one/science_two",
+            ("xDim", "yDim"),
+        ],
+        [
+            "Test xDim/yDim is valid spatial dimensions",
+            "group_two/science_three",
+            ("Xdim", "Ydim"),
+        ],
+        [
+            "Test XDIM/YDIM is valid spatial dimensions",
+            "group_three/science_four",
+            ("XDIM", "YDIM"),
+        ],
+        [
+            "Test xdim/ydim is valid spatial dimensions",
+            "group_four/science_five",
+            ("xdim", "ydim"),
+        ],
+    ]
+
+    for description, variable_path, expected_path in test_args:
+        print(description)
+        assert is_valid_spatial_dimensions(input_datatree_2d_XDim_YDim, variable_path, logger)
+
+
+@pytest.mark.parametrize('dimension', ['XDim', 'y-dim'])
+def test_is_valid_spatial_dimensions_XDim_y_dim_incomplete(dimension, logger):
+    """Verify returns False when only one spatial dimension present."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': ([dimension], np.ones((4)))},
+            coords={
+                dimension: (dimension, np.array([1, 2, 3, 4])),
+            },
+        ),
+    )
+    assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+def test_is_valid_spatial_dimensions_with_invalid_dim_names_with_valid_standard_name_units_success(logger):
+    """Verify returns True, when spatial dimensions has invalid dim name 'latlat' and 'lonlong
+    with correct standard_name and units."""
+    coords = {
+        "latlat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lonlon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert is_valid_spatial_dimensions(variable, "science", logger)
+
+
+def test_is_valid_spatial_dimensions_with_standard_name_units_success_lat_lon(logger):
+    """Verify returns True, when spatial dimensions has correct standard_name and units."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger)
+
+
+def test_is_valid_spatial_dimensions_with_standard_name_units_success_xdim_ydim(logger):
+    """Verify returns True, when spatial dimensions has correct standard_name and units."""
+    coords = {
+        "XDim": xr.DataArray([0], attrs={"standard_name": "projection_x_coordinate", "units": "m"}),
+        "YDim": xr.DataArray([0], attrs={"standard_name": "projection_y_coordinate", "units": "m"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger)
+
+
+def test_invalid_spatial_dimensions_with_standard_name_units_success_time(logger):
+    """Verify returns False, when spatial dimensions has standard_name 'time' and units ' since '."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"}),
+        "time": xr.DataArray([0], attrs={"standard_name": "time", "units": "hours since 2001-01-01 00:00:00.0"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+
+def test_missing_standard_name(logger):
+    """Verify returns False, when spatial dimensions does not have standard_name."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+
+def test_missing_units(logger):
+    """Verify returns False, when spatial dimensions does not have standard_name."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+
+def test_invalid_standard_name(logger):
+    """Verify returns False, when spatial dimensions have invalid units."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "lat", "units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+
+def test_invalid_units(logger):
+    """Verify returns False, when spatial dimensions have invalid units."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "radians"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+
+def test_empty_coords(logger):
+    """Verify returns False, when spatial dimensions have empty coordinates."""
+    variable = xr.DataArray([1])
+
+    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False

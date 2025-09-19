@@ -333,9 +333,16 @@ def input_datatree_reorder_3d():
        |- science_two(latitude, longitude, time)
     |- group_two
        |- science_three(x, y, z)
-        |- group_four
+        |- group_three
           | science_four(x-dim, y-dim, z-dim)
-
+    |- group_four
+       |- science_five(abc, def, ghi)
+    |- group_five
+       |- science_six(y, x, "")
+    |- group_six
+       |- science_seven(x, y, z, w)
+    |- group_seven
+       |- science_eight(XDim, YDim, ZDim)
 
     """
     dt = xr.DataTree(
@@ -421,6 +428,19 @@ def input_datatree_reorder_3d():
                 "x": ("x", np.array([3, 4])),
                 "z": ("z", np.array([5, 6])),
                 "w": ("w", np.array([7, 8])),
+            },
+        )
+    )
+
+    dt["group_seven"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_eight": (["XDim", "YDim", "ZDim"], np.ones((2, 2, 2))),
+            },
+            coords={
+                "XDim": ("XDim", np.array([1, 2])),
+                "YDim": ("YDim", np.array([3, 4])),
+                "ZDim": ("ZDim", np.array([5, 6])),
             },
         )
     )
@@ -525,6 +545,88 @@ def input_datatree_reorder_2d_x_dim_y_dim():
             coords={
                 "x-dim": ("x-dim", np.array([1, 2])),
                 "y-dim": ("y-dim", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    return dt
+
+
+@fixture()
+def input_datatree_2d_XDim_YDim():
+    """Build 2 dimension XDim, YDim Datatree to verify tests.
+
+    Tree structure in test:
+
+    |- science_one(XDim, YDim)
+    |- XDim
+    |- YDim
+    |- group_one
+       |- science_two(xDim, yDim)
+    |- group_two
+       |- science_three(Xdim, Ydim)
+    |- group_three
+       |- science_four(XDIM, YDIM)
+    |- group_four
+       |- science_five(xdim, ydim)
+
+    """
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_one": (["XDim", "YDim"], np.ones((2, 3))),
+            },
+            coords={
+                "XDim": ("XDim", np.array([1, 2])),
+                "YDim": ("YDim", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    dt["group_one"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_two": (["xDim", "yDim"], np.ones((2, 3))),
+            },
+            coords={
+                "xDim": ("xDim", np.array([1, 2])),
+                "yDim": ("yDim", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    dt["group_two"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_three": (["Xdim", "Ydim"], np.ones((2, 3))),
+            },
+            coords={
+                "Xdim": ("Xdim", np.array([1, 2])),
+                "Ydim": ("Ydim", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    dt["group_three"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_four": (["XDIM", "YDIM"], np.ones((2, 3))),
+            },
+            coords={
+                "XDIM": ("XDIM", np.array([1, 2])),
+                "YDIM": ("YDIM", np.array([3, 4, 5])),
+            },
+        ),
+    )
+
+    dt["group_four"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "science_five": (["xdim", "ydim"], np.ones((2, 3))),
+            },
+            coords={
+                "xdim": ("xdim", np.array([1, 2])),
+                "ydim": ("ydim", np.array([3, 4, 5])),
             },
         ),
     )
