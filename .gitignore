@@ -11,3 +11,12 @@ build/
 .bash_history
 .cache
 /.coverage
+.venv/
+.pytest_cache/
+coverage
+test-reports
+tests/reports
+coverage.xml
+.coverage
+.coverage.*
+.cache

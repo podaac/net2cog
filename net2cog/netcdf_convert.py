@@ -282,7 +282,14 @@ def netcdf_converter(
     if netcdf_file.endswith(('.nc', '.nc4', 'h5')):
         logger.info("Reading %s", basename(netcdf_file))
 
-        input_datatree = xr.open_datatree(netcdf_file)
+        input_datatree = xr.open_datatree(
+            netcdf_file,
+            decode_coords=False,
+            decode_times=False,
+            decode_timedelta=False,
+            concat_characters=True,
+            use_cftime=False,
+        )
 
         if not var_list:
             # Empty list means "all" variables, so get all variables in

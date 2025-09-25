@@ -346,3 +346,30 @@ def test_spl3smp_dtype_string_handle_exception(
             ["/Soil_Moisture_Retrieval_Data_AM/tb_time_utc"],
             logger,
         )
+
+
+def test_spl3ftp_e_v4_dtype_timedelta(
+    temp_dir, logger, spl3ftp_e_variable_selection_file
+):
+    """Verify a SPL3FTP_E variable with dtype timedelta/timestamp
+    can be converted.
+
+    """
+    test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
+
+    # Process test file:
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ['Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds'],
+        logger
+    )
+
+    # Check results are as expected:
+    assert len(results) == 1, "Incorrect number of output file names."
+
+    assert pathlib.Path(results[0]).is_file(), "No file created."
+    assert (
+        basename(results[0]) == "Freeze_Thaw_Retrieval_Data_Polar_freeze_thaw_time_seconds.tif"
+    ), "Incorrect output file name"
+    assert cog_validate(pathlib.Path(results[0]))[0]
