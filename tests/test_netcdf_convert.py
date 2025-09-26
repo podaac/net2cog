@@ -380,8 +380,8 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
     temp_dir, logger, spl3ftp_e_variable_selection_file
 ):
     """Verify that attempting to open a SPL3FTP_E variable with a timedelta
-    or timestamp dtype set to `decode_timedelta=True` using
-    xr.open_datatree(test_file, decode_timedelta=True, ...) raises the
+    or timestamp dtype set to decode_timedelta=None (default) in
+    xr.open_datatree(test_file, decode_timedelta=None, ...) raises the
     expected ValueError exception
     
     """
@@ -390,13 +390,12 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
         'Could not convert object to NumPy timedelta'
     )
 
-    time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-    
     input_datatree = xr.open_datatree(
         test_file,
-        decode_coords=True,
-        decode_times=time_coder,
-        decode_timedelta=True,
+        decode_coords=None,
+        decode_times=None,
+        decode_timedelta=None,
+        use_cftime=None,
     )
 
     with pytest.raises(ValueError, match=expected_exception):
