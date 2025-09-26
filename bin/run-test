@@ -17,6 +17,8 @@
 
 set -ex
 
+tag=${1:-SIT}
+
 # Remove cached bytecode Python files, to ensure latest code is used
 find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
@@ -31,4 +33,4 @@ mkdir -p coverage
 docker run --rm \
 	-v $(pwd)/test-reports:/home/tests/reports \
 	-v $(pwd)/coverage:/home/tests/coverage \
-	ghcr.io/podaac/net2cog-test "$@"
+	ghcr.io/podaac/net2cog-test:${tag} "$@"

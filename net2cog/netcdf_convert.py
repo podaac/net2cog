@@ -282,13 +282,14 @@ def netcdf_converter(
     if netcdf_file.endswith(('.nc', '.nc4', 'h5')):
         logger.info("Reading %s", basename(netcdf_file))
 
+        time_coder = xr.coders.CFDatetimeCoder(use_cftime=False)
+
         input_datatree = xr.open_datatree(
             netcdf_file,
             decode_coords=False,
-            decode_times=False,
+            decode_times=time_coder,
             decode_timedelta=False,
             concat_characters=True,
-            use_cftime=False,
         )
 
         if not var_list:

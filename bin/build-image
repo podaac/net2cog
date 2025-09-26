@@ -1,7 +1,14 @@
 #!/bin/bash
 
 image="ghcr.io/podaac/net2cog"
-tag="SIT"
+tag=${1:-SIT}
+
+# Function to check for and install Poetry
+if ! command -v poetry >/dev/null 2>&1; then
+    echo "Poetry not found. Installing with pip..."
+    python3 -m pip install poetry
+    echo "Poetry installed successfully: $(poetry --version)"
+fi
 
 # Execute poetry build to produce the wheel file: net2cog-x.x.x-py3-none-any.whl
 build_version=$(poetry build)

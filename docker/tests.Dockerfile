@@ -5,7 +5,8 @@
 # tested, preventing discrepancies between the service and test environments.
 #
 
-FROM ghcr.io/podaac/net2cog
+ARG IMAGE_TAG
+FROM ghcr.io/podaac/net2cog:$IMAGE_TAG
 
 ENV DOCKER_RUNNING=1
 
