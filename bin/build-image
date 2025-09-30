@@ -1,0 +1,41 @@
+#!/bin/bash
+
+image="ghcr.io/podaac/net2cog"
+tag=${1:-SIT}
+
+# Function to check for and install Poetry
+if ! command -v poetry >/dev/null 2>&1; then
+    echo "Poetry not found. Installing with pip..."
+    python3 -m pip install poetry
+    echo "Poetry installed successfully: $(poetry --version)"
+fi
+
+# Execute poetry build to produce the wheel file: net2cog-x.x.x-py3-none-any.whl
+build_version=$(poetry build)
+
+# Check if wheel file was found
+if [ -z "$build_version" ]; then
+    echo "No net2cog .whl file found."
+    exit 1
+fi
+
+# Retrieve the package version by analyzing the net2cog-x.x.x-py3-none-any.whl filename
+net2cog_version=$(echo "$build_version" | grep -oE "net2cog-[^[:space:]]*-none-any\.whl")
+
+# Check if a net2cog_version was found
+if [ -z "$net2cog_version" ]; then
+    echo "No net2cog version found."
+    exit 1
+fi
+
+# Remove old versions of ghcr.io/podaac/net2cog and ghcr.io/podaac/net2cog-test
+./bin/clean-images
+
+# Build the image
+# - "latest", so the test Dockerfile can use the service image as a base image.
+docker build \
+    --platform linux/amd64 \
+    -f docker/Dockerfile \
+    -t ${image}:${tag} \
+    --build-arg SOURCE="dist/$net2cog_version[harmony]" \
+    --build-arg DIST_PATH="dist/" .

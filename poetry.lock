@@ -2121,4 +2121,4 @@ harmony = ["harmony-service-lib"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "35f8537ebc2cc87314ed7cb52ae14a73ec4336da3e6815f5c2816d199047e811"
+content-hash = "c494bd6ba1c00ac6712ca31eb7249f03e56040fe1fa9f99fd99cf71921dcdeb1"

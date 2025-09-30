@@ -18,6 +18,7 @@ from net2cog.netcdf_convert import (
     Net2CogError,
     get_all_data_variables,
     netcdf_converter,
+    _write_cogtiff,
 )
 
 
@@ -345,4 +346,92 @@ def test_spl3smp_dtype_string_handle_exception(
             pathlib.Path(temp_dir),
             ["/Soil_Moisture_Retrieval_Data_AM/tb_time_utc"],
             logger,
+        )
+
+
+def test_spl3ftp_e_v4_dtype_timedelta(
+    temp_dir, logger, spl3ftp_e_variable_selection_file
+):
+    """Verify a SPL3FTP_E variable with dtype timedelta/timestamp
+    can be converted.
+
+    """
+    test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
+
+    # Process test file:
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ['Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds'],
+        logger
+    )
+
+    # Check results are as expected:
+    assert len(results) == 1, "Incorrect number of output file names."
+
+    assert pathlib.Path(results[0]).is_file(), "No file created."
+    assert (
+        basename(results[0]) == "Freeze_Thaw_Retrieval_Data_Polar_freeze_thaw_time_seconds.tif"
+    ), "Incorrect output file name"
+    assert cog_validate(pathlib.Path(results[0]))[0]
+
+
+def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
+    temp_dir, logger, spl3ftp_e_variable_selection_file
+):
+    """Verify that attempting to open a SPL3FTP_E variable with a timedelta
+    or timestamp dtype set to decode_timedelta=None (default) in
+    xr.open_datatree(test_file, decode_timedelta=None, ...) raises the
+    expected ValueError exception
+    
+    """
+    test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
+    expected_exception = (
+        'Could not convert object to NumPy timedelta'
+    )
+
+    input_datatree = xr.open_datatree(
+        test_file,
+        decode_coords=None,
+        decode_times=None,
+        decode_timedelta=None,
+        use_cftime=None,
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        _write_cogtiff(
+            temp_dir,
+            input_datatree,
+            'Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds',
+            logger
+        )
+
+
+def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_true(
+    temp_dir, logger, spl3ftp_e_variable_selection_file
+):
+    """Verify that attempting to open a SPL3FTP_E variable with a timedelta
+    or timestamp dtype set to `decode_timedelta=xr.coders.CFDatetimeCoder(use_cftime=True)`
+    using xr.open_datatree(test_file, decode_timedelta=True, ...) raises the
+    expected ValueError exception
+    
+    """
+    test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
+    expected_exception = (
+        'Could not convert object to NumPy timedelta'
+    )
+
+    input_datatree = xr.open_datatree(
+        test_file,
+        decode_coords=True,
+        decode_times=xr.coders.CFDatetimeCoder(use_cftime=True),
+        decode_timedelta=True,
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        _write_cogtiff(
+            temp_dir,
+            input_datatree,
+            'Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds',
+            logger
         )

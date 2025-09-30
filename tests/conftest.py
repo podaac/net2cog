@@ -73,6 +73,18 @@ def spl3smp_nested_3d_annotated_file_basename():
     return 'SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4'
 
 
+@fixture(scope='session')
+def spl3ftp_e_variable_selection_collection():
+    """Name of collection with a variable, used as a subdirectory in tests/data."""
+    return 'SPL3FTP_E_004'
+
+
+@fixture(scope='session')
+def spl3ftp_e_variable_selection_file_basename():
+    """Basename of the SPL3SMP gridded file used as test input."""
+    return 'SMAP_L3_FT_P_E_freeze_thaw_time_seconds_subsetted_regridded.nc4'
+
+
 @fixture(scope='function')
 def temp_dir():
     """A temporary directory used for each test, to ensure tests are isolated."""
@@ -251,6 +263,34 @@ def spl3smp_nested_3d_annotated_file(
             data_dir,
             spl3smp_nested_3d_annotated_collection,
             spl3smp_nested_3d_annotated_file_basename,
+        ),
+        temporary_data_file,
+    )
+    return temporary_data_file
+
+
+@fixture(scope="function")
+def spl3ftp_e_variable_selection_file(
+    data_dir,
+    temp_dir,
+    spl3ftp_e_variable_selection_collection,
+    spl3ftp_e_variable_selection_file_basename,
+):
+    """Path to SPL3FTP_E gridded input file, copied into the test directory.
+
+    This file is already subsetted  of a single science variable 
+    (Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds) to
+    reduce file size in the repository.
+
+    """
+    temporary_data_file = Path(
+        join(temp_dir, spl3ftp_e_variable_selection_file_basename)
+    )
+    copyfile(
+        join(
+            data_dir,
+            spl3ftp_e_variable_selection_collection,
+            spl3ftp_e_variable_selection_file_basename,
         ),
         temporary_data_file,
     )

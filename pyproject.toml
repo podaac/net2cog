@@ -32,6 +32,7 @@ flake8 = "^6.0.0"
 pytest-cov = "^4.1.0"
 pylint = "^2.17.4"
 sphinx = "^7.0.1"
+coverage = "^7.0.2"
 
 [tool.poetry.extras]
 harmony = ["harmony-service-lib"]

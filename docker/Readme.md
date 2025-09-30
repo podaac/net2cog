@@ -23,36 +23,39 @@ Example:
 docker build -f docker/Dockerfile --build-arg SOURCE="net2cog[harmony]==1.1.0-alpha.9" .
 ```
 
-### Building from local code
+### Local development:
 
-First build the project with Poetry.
+Local testing of service functionality is best achieved via a local instance of
+[Harmony](https://github.com/nasa/harmony). Please see instructions there
+regarding creation of a local Harmony-In-A-Box instance.
 
-```
-poetry build
-```
+## Test in Docker:
 
-That will create a folder `dist/` and a wheel file that is named with the version of the software that was built. 
+This service utilises the Python `pytest` package to perform unit tests on
+classes and functions in the service. After local development is complete, and
+test have been updated, they can be run via:
 
-In order to use the local wheel file, the `DIST_PATH` build arg must be provided to the `docker build` command
-and the `SOURCE` build arg should be set to the path to the wheel file.
-
-Example:
-
-```shell script
-docker build -f docker/Dockerfile -t ghcr.io/podaac/net2cog:SIT \
-    --build-arg SOURCE="dist/net2cog-1.1.0a1-py3-none-any.whl[harmony]" \
-    --build-arg DIST_PATH="dist/" .
+```bash
+$ cd ..
+$ ./bin/build-image
+$ ./bin/build-test
+$ ./bin/run-test
 ```
 
-To use with Harmony in a Box, the output image must be tagged, using the `-t`
-flag, with a string that matches the `NET2COG_IMAGE` environment variable
-used by Harmony. The default value for this environment variable in Harmony is
-`ghcr.io/podaac/net2cog:SIT`, as specified in
-[harmony/services/harmony/env-defaults](https://github.com/nasa/harmony/blob/main/services/harmony/env-defaults). This can be overwritten in your local `.env` file
-for Harmony.
+The `run_tests.sh` script will also generate a coverage report, rendered
+in HTML, and scan the code with `pylint`.
 
-## Running
+The `unittest` suite is run automatically via GitHub Actions as part of a
+GitHub "workflow". These workflows are defined in the `.github/workflows`
+directory.
 
-If given no arguments, running the docker image will invoke the [Harmony service](https://github.com/nasa/harmony-service-lib-py) CLI.  
-This requires the `[harmony]` extra is installed when installing the `net2cog` package from pip (as shown in the examples above).
 
+## Test locally:
+
+```bash
+$ cd ..
+$ ./run_tests.sh
+```
+
+The `run_tests.sh` script will also generate a coverage report, rendered
+in HTML, and scan the code with `pylint`.
