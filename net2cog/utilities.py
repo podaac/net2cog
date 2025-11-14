@@ -7,7 +7,10 @@ Utility functions for use within the net2cog service.
 """
 
 from logging import Logger
+from collections.abc import Callable
+from typing import Tuple
 import xarray as xr
+import numpy as np
 
 X_COORDINATE = ("lon", "longitude", "x", "x-dim", "XDim")
 Y_COORDINATE = ("lat", "latitude", "y", "y-dim", "YDim")
@@ -384,3 +387,144 @@ def is_valid_spatial_dimensions_with_standard_name_units(
             return False
 
     return True
+
+
+def get_value_error_handler(
+        nc_xarray: xr.DataTree, variable_path: str, value_error_message: str,
+) -> Callable:
+    """ This function returns the appropriate handler method
+    based on the ValueError message.  Raises a ValueError if
+    no matching handler is found.
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+    value_error_message: str
+        The ValueError exception message
+
+    Returns
+    -------
+        Callable: Returns the right callable method
+        apply_fillvalue_to_missing_value()
+        or any other process.
+
+    """
+    # ValueError: Variable None has conflicting _FillValue (255) and
+    # missing_value (200).  Cannot encode data.
+    fill_missing_value_keywords = ['_FillValue', 'missing_value']
+
+    if all(word in value_error_message for word in fill_missing_value_keywords):
+        fill_value, missing_value = (
+            get_fillvalue_and_missing_value(nc_xarray, variable_path)
+        )
+
+        if fill_value is not None and missing_value is not None:
+            return apply_fillvalue_to_missing_value
+
+    raise ValueError(value_error_message)
+
+
+def apply_fillvalue_to_missing_value(
+        nc_xarray: xr.DataTree, variable_path: str
+) -> xr.DataTree:
+    """This function replaces occurrences of missing_value in the variable's
+    data array with _FillValue. It also removes the missing_value attribute
+    and adds a new Key_Replacement attribute to document the transformation
+    for reference.
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+
+    Returns
+    -------
+    xr.DataTree
+        New DataTree with missing_value data replace with _FillValue data,
+        missing_value attribute delete, and new Key_Replacement attribute
+        to explain the process.
+
+    """
+    fill_value, missing_value = (
+        get_fillvalue_and_missing_value(nc_xarray, variable_path)
+    )
+
+    if fill_value is None or missing_value is None:
+        raise ValueError("Missing _FillValue or missing_value attribute.")
+
+    # DataTree nc_xarray is immutable so copy new DataTree
+    # to change missing_value data
+    nc_xarray_tmp = nc_xarray.copy()
+    values_tmp = nc_xarray_tmp[variable_path].values.copy()
+
+    # Use np.nditer with write access
+    with np.nditer(values_tmp, flags=['multi_index'], op_flags=['readwrite']) as it:
+        for values in it:
+            if values[...] == missing_value:
+                values[...] = fill_value
+
+    # Assign updated values back to the DataTree
+    nc_xarray_tmp[variable_path].values = values_tmp
+
+    # Delete missing_value
+    if 'missing_value' in nc_xarray_tmp[variable_path].encoding:
+        del nc_xarray_tmp[variable_path].encoding['missing_value']
+    elif 'missing_value' in nc_xarray_tmp[variable_path].attrs:
+        del nc_xarray_tmp[variable_path].attrs['missing_value']
+
+    # Add Key_Replacement attribute that explains this processing
+    key_replacement = (f"_FillValue = {fill_value} represents all missing "
+                       f"data including fill values (orbit gaps, missing swaths) "
+                       f"and other missing observations originally marked "
+                       f"as {missing_value}")
+
+    nc_xarray_tmp[variable_path].attrs["Key_Replacement"] = key_replacement
+
+    return nc_xarray_tmp
+
+
+def get_fillvalue_and_missing_value(
+        nc_xarray: xr.DataTree, variable_path: str
+) -> Tuple[
+           np.uint16 | np.uint32 | np.float32 | None,
+           np.uint16 | np.uint32 | np.float32 | None]:
+    """
+    Determine the appropriate _FillValue and missing_value for a given variable.
+
+    The search order for each attribute is:
+      - encoding['_FillValue']
+      - attrs['_FillValue']
+      - encoding['missing_value']
+      - attrs['missing_value']
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+
+    Returns
+    -------
+        Tuple[np.uint16 | np.uint32 | np.float32 | None,
+              np.uint16 | np.uint32 | np.float32 | None]:
+        A tuple containing the _FillValue and missing_value or None.
+
+    """
+    fill_value = None
+    missing_value = None
+
+    fill_value = nc_xarray[variable_path].encoding.get("_FillValue")
+    if fill_value is None:
+        fill_value = nc_xarray[variable_path].attrs.get('_FillValue')
+
+    missing_value = nc_xarray[variable_path].encoding.get("missing_value")
+    if missing_value is None:
+        missing_value = nc_xarray[variable_path].attrs.get("missing_value")
+
+    return fill_value, missing_value

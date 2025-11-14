@@ -30,6 +30,7 @@ from net2cog.utilities import (
     is_valid_shape,
     is_valid_dtype,
     is_valid_spatial_dimensions,
+    get_value_error_handler,
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -108,36 +109,47 @@ def _write_cogtiff(
                 f"No variable named '{variable_path}'."
             ) from error
         except (LookupError, TypeError) as err:
-            logger.info("Variable %s cannot be converted to tif: %s", variable_path, err)
+            logger.info("Variable %s cannot be converted to tif: %s",
+                        variable_path, err)
             raise Net2CogError(variable_path, err) from err
+        except ValueError as error:
+            try:
+                value_error_handler = (
+                    get_value_error_handler(nc_xarray, variable_path, str(error))
+                )
+                logger.info("Calling %s() method...", value_error_handler)
+                nc_xarray_tmp = value_error_handler(nc_xarray, variable_path)
+                nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+            except ValueError as valerr:
+                raise ValueError(valerr) from valerr
+            except (RuntimeError, Exception, Net2CogError) as runerr:
+                logger.info("Variable %s cannot be converted to tif: %s",
+                            variable_path, runerr)
+                raise Net2CogError(variable_path, runerr) from runerr
         except InvalidDimensionOrder as dmerr:
             try:
                 logger.info("%s: reorder dimensions...", dmerr)
                 nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
                 nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
             except (RuntimeError, Exception, Net2CogError) as runerr:
-                logger.info("Variable %s cannot be converted to tif: %s", variable_path, runerr)
+                logger.info("Variable %s cannot be converted to tif: %s",
+                            variable_path, runerr)
                 raise Net2CogError(variable_path, runerr) from runerr
         except DimensionError as dmerr:
             try:
                 logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
                 nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
                 nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
-            except RuntimeError as runerr:
-                logger.info("Variable %s cannot be converted to tif: %s", variable_path, runerr)
-                raise Net2CogError(variable_path, runerr) from runerr
-            except Exception as aerr:  # pylint: disable=broad-except
-                logger.info("Variable %s cannot be converted to tif: %s", variable_path, aerr)
-                raise Net2CogError(variable_path, aerr) from aerr
+            except (RuntimeError, Exception) as err:
+                logger.info("Variable %s cannot be converted to tif: %s",
+                            variable_path, err)
+                raise Net2CogError(variable_path, err) from err
 
         # Option to add additional GDAL config settings
         # config = dict(GDAL_NUM_THREADS="ALL_CPUS", GDAL_TIFF_OVR_BLOCKSIZE="128")
         # with rasterio.Env(**config):
 
         logger.info("Starting conversion... %s", output_file_name)
-
-        # default CRS setting
-        # crs = rasterio.crs.CRS({"init": "epsg:3857"})
 
         with rasterio.open(temp_file_name, mode='r+') as src_dataset:
             # if src_dst.crs is None:

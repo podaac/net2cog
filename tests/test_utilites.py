@@ -9,6 +9,7 @@ Test the net2cog utilites functionality.
 import pytest
 import numpy as np
 import xarray as xr
+import re
 from net2cog.netcdf_convert import Net2CogError
 from net2cog.utilities import (
     resolve_relative_path,
@@ -16,6 +17,9 @@ from net2cog.utilities import (
     reorder_dimensions,
     is_valid_spatial_dimensions,
     is_valid_spatial_dimensions_with_standard_name_units,
+    get_value_error_handler,
+    apply_fillvalue_to_missing_value,
+    get_fillvalue_and_missing_value,
 )
 
 
@@ -681,3 +685,119 @@ def test_empty_coords(logger):
     variable = xr.DataArray([1])
 
     assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+
+@pytest.mark.parametrize(
+    "value_error_message, expected_handler",
+    [
+        (
+            "Variable None has conflicting _FillValue (255) and missing_value (200). Cannot encode data.",
+            apply_fillvalue_to_missing_value,
+        ),
+        (
+            "Variable None has conflicting missing_value (200) and _FillValue (255). Cannot encode data.",
+            apply_fillvalue_to_missing_value,
+        ),
+    ]
+)
+def test_get_value_error_handler_valid(input_datatree, value_error_message, expected_handler):
+    """Test that known ValueError messages return the correct handler."""
+    handler = get_value_error_handler(input_datatree,
+                                      "group_five/variable_two",
+                                      value_error_message
+                                     )
+    assert handler == expected_handler
+
+@pytest.mark.parametrize(
+    "value_error_message",
+    [
+        "Variable None has missing_value (200). Cannot encode data.",
+        "Variable None has _FillValue (255). Cannot encode data.",
+    ]
+)
+def test_get_value_error_handler_invalid(input_datatree, value_error_message):
+    """Test that unrecognized ValueError messages raise a ValueError."""
+    with pytest.raises(ValueError, match=re.escape(value_error_message)):
+        get_value_error_handler(input_datatree,
+                                "group_five/variable_two",
+                                value_error_message
+                               )
+
+@pytest.mark.parametrize(
+    "variable_path, expected_fill, expected_missing",
+    [
+        ("group_five/variable_one", 355, 300),
+        ("group_five/variable_two", 255, 200),
+        ("group_one/group_two", None, None),
+        ("group_six/variable_four", 255, 0),
+    ]
+)
+def test_get_fillvalue_and_missing_value(input_datatree,
+                                         variable_path,
+                                         expected_fill,
+                                         expected_missing
+                                        ):
+    """Test get_fillvalue_and_missing_value.  Verifies correct extraction of
+       _FillValue and missing_value from encoding or attrs.
+       Covers scenarios with missing metadata, malformed values,and identical attributes.
+
+    """
+    fill_value, missing_value = get_fillvalue_and_missing_value(input_datatree,
+                                                                variable_path
+                                                               )
+    assert fill_value == expected_fill
+    assert missing_value == expected_missing
+
+
+def test_apply_fillvalue_to_missing_value(input_datatree):
+    """Verifies that values matching missing_value are correctly
+       replaced with _FillValue. Also checks that the missing_value
+       attribute is removed and the Key_Replacement attribute is added.
+
+    """
+    expected_key_replacement = (
+        f'_FillValue = -999 represents all missing data including fill values'
+        f' (orbit gaps, missing swaths) and other missing observations'
+        f' originally marked as 999'
+    )
+
+    nc_xarray_tmp = apply_fillvalue_to_missing_value(
+        input_datatree,
+        "group_six/variable_one"
+    )
+
+    result = nc_xarray_tmp["group_six/variable_one"].values
+
+    assert (result == np.array([[1, -999], [-999, 4]])).all()
+    assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].encoding
+    assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].attrs
+
+    key_replacement = nc_xarray_tmp["group_six/variable_one"].attrs.get("Key_Replacement")
+    assert key_replacement == expected_key_replacement
+
+def test_apply_fillvalue_to_missing_value_no_missing_value_exception(input_datatree):
+    """Ensures a ValueError exception if the missing_value attribute is absent
+
+    """
+    expected_exception = (
+        "Missing _FillValue or missing_value attribute."
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        apply_fillvalue_to_missing_value(
+            input_datatree,
+            "group_six/variable_two"
+        )
+
+def test_apply_fillvalue_to_missing_value_no_fillvalue_exception(input_datatree):
+    """Ensures a ValueError exception if the _FillValue attribute is absent
+
+    """
+    expected_exception = (
+        "Missing _FillValue or missing_value attribute."
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        apply_fillvalue_to_missing_value(
+            input_datatree,
+            "group_six/variable_three"
+        )
