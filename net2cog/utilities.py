@@ -463,8 +463,8 @@ def apply_fillvalue_to_missing_value(
     values_tmp = nc_xarray_tmp[variable_path].values.copy()
 
     # Use np.nditer with write access
-    with np.nditer(values_tmp, flags=['multi_index'], op_flags=['readwrite']) as it:
-        for values in it:
+    with np.nditer(values_tmp, flags=['multi_index'], op_flags=['readwrite']) as values_iter:
+        for values in values_iter:
             if values[...] == missing_value:
                 values[...] = fill_value
 
