@@ -114,22 +114,22 @@ def _write_cogtiff(
             raise Net2CogError(variable_path, err) from err
         except ValueError as error:
             process_value_error_exception(nc_xarray,
-                                variable_path,
-                                str(error),
-                                logger,
-                                temp_file_name)
+                                          variable_path,
+                                          str(error),
+                                          logger,
+                                          temp_file_name)
         except InvalidDimensionOrder as dmerr:
             logger.info("%s: reorder dimensions...", dmerr)
             process_invalid_dimension_order_exception(nc_xarray,
-                                variable_path,
-                                logger,
-                                temp_file_name)
+                                                      variable_path,
+                                                      logger,
+                                                      temp_file_name)
         except DimensionError as dmerr:
             logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
             process_dimension_error_exception(nc_xarray,
-                                variable_path,
-                                logger,
-                                temp_file_name)
+                                              variable_path,
+                                              logger,
+                                              temp_file_name)
 
         # Option to add additional GDAL config settings
         # config = dict(GDAL_NUM_THREADS="ALL_CPUS", GDAL_TIFF_OVR_BLOCKSIZE="128")
