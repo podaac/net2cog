@@ -479,9 +479,9 @@ def apply_fillvalue_to_missing_value(
 
     # Add process_note attribute that explains this processing
     process_note = (f"_FillValue = {fill_value} represents all missing "
-                       f"data including fill values (orbit gaps, missing swaths) "
-                       f"and other missing observations originally marked "
-                       f"as {missing_value}")
+                    f"data including fill values (orbit gaps, missing swaths) "
+                    f"and other missing observations originally marked "
+                    f"as {missing_value}")
 
     nc_xarray_tmp[variable_path].attrs["process_note"] = process_note
 
