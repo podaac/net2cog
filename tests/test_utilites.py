@@ -751,10 +751,10 @@ def test_get_fillvalue_and_missing_value(input_datatree,
 def test_apply_fillvalue_to_missing_value(input_datatree):
     """Verifies that values matching missing_value are correctly
        replaced with _FillValue. Also checks that the missing_value
-       attribute is removed and the Key_Replacement attribute is added.
+       attribute is removed and the process_note attribute is added.
 
     """
-    expected_key_replacement = (
+    expected_process_note = (
         f'_FillValue = -999 represents all missing data including fill values'
         f' (orbit gaps, missing swaths) and other missing observations'
         f' originally marked as 999'
@@ -771,8 +771,8 @@ def test_apply_fillvalue_to_missing_value(input_datatree):
     assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].encoding
     assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].attrs
 
-    key_replacement = nc_xarray_tmp["group_six/variable_one"].attrs.get("Key_Replacement")
-    assert key_replacement == expected_key_replacement
+    process_note = nc_xarray_tmp["group_six/variable_one"].attrs.get("process_note")
+    assert process_note == expected_process_note
 
 def test_apply_fillvalue_to_missing_value_no_missing_value_exception(input_datatree):
     """Ensures a ValueError exception if the missing_value attribute is absent

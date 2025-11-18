@@ -432,7 +432,7 @@ def apply_fillvalue_to_missing_value(
 ) -> xr.DataTree:
     """This function replaces occurrences of missing_value in the variable's
     data array with _FillValue. It also removes the missing_value attribute
-    and adds a new Key_Replacement attribute to document the transformation
+    and adds a new process_note attribute to document the transformation
     for reference.
 
     Parameters
@@ -446,7 +446,7 @@ def apply_fillvalue_to_missing_value(
     -------
     xr.DataTree
         New DataTree with missing_value data replace with _FillValue data,
-        missing_value attribute delete, and new Key_Replacement attribute
+        missing_value attribute delete, and new process_note attribute
         to explain the process.
 
     """
@@ -477,13 +477,13 @@ def apply_fillvalue_to_missing_value(
     elif 'missing_value' in nc_xarray_tmp[variable_path].attrs:
         del nc_xarray_tmp[variable_path].attrs['missing_value']
 
-    # Add Key_Replacement attribute that explains this processing
-    key_replacement = (f"_FillValue = {fill_value} represents all missing "
+    # Add process_note attribute that explains this processing
+    process_note = (f"_FillValue = {fill_value} represents all missing "
                        f"data including fill values (orbit gaps, missing swaths) "
                        f"and other missing observations originally marked "
                        f"as {missing_value}")
 
-    nc_xarray_tmp[variable_path].attrs["Key_Replacement"] = key_replacement
+    nc_xarray_tmp[variable_path].attrs["process_note"] = process_note
 
     return nc_xarray_tmp
 
