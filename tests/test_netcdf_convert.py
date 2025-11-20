@@ -5,6 +5,7 @@ test_netcdf_convert.py
 
 Test the netcdf conversion functionality.
 """
+import re
 import pathlib
 import subprocess
 from os.path import basename, splitext
@@ -19,6 +20,8 @@ from net2cog.netcdf_convert import (
     get_all_data_variables,
     netcdf_converter,
     _write_cogtiff,
+    process_value_error_exception,
+    process_invalid_dimension_order_exception,
 )
 
 
@@ -435,3 +438,67 @@ def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_t
             'Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds',
             logger
         )
+
+@pytest.mark.parametrize(
+    "value_error_message",
+    [
+        "Variable None has missing_value (200). Cannot encode data.",
+        "Variable None has _FillValue (255). Cannot encode data.",
+    ]
+)
+def test_process_value_error_exception_catch_value_error(
+    input_datatree,
+    value_error_message,
+    logger,
+    temp_dir
+):
+    """Test that process_value_error_exception re-raises a ValueError
+    when the handler fails to resolve encoding issues.
+
+    """
+    test_file = pathlib.Path(temp_dir, 'output.tif')
+
+    with pytest.raises(ValueError, match=re.escape(value_error_message)):
+        process_value_error_exception(
+            input_datatree,
+            "group_five/variable_two",
+            value_error_message,
+            logger,
+            test_file,
+        )
+
+def test_process_invalid_dimension_order_exception(
+    input_datatree_reorder_3d,
+    logger,
+    temp_dir
+):
+    """Ensure that the function handles exceptions when missing
+    coordinates are not parsed correctly.
+
+    """
+    test_args = [
+        [
+            "Test Net2CogError (abc, def, ghi) x,y not exisit",
+            "group_four/science_five",
+        ],
+        [
+            "Test Net2CogError (y, x, '') z is empty string",
+            "group_five/science_six",
+        ],
+        [
+            "Test Net2CogError for 4 dimension (y, x, z, w)",
+            "group_six/science_seven",
+        ],
+    ]
+
+    test_file = pathlib.Path(temp_dir, 'output.tif')
+
+    for description, variable_path in test_args:
+        print(description)
+        with pytest.raises(Net2CogError):
+            process_invalid_dimension_order_exception(
+                input_datatree_reorder_3d,
+                variable_path,
+                logger,
+                test_file,
+            )
