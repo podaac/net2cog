@@ -420,7 +420,11 @@ def get_value_error_handler(
             nc_xarray, variable_path,
         )
 
-        if fill_value is not None and missing_value is not None and fill_value != missing_value:
+        if (
+            fill_value is not None
+            and missing_value is not None
+            and fill_value != missing_value
+        ):
             return apply_fillvalue_to_missing_value
 
     raise ValueError(value_error_message)
