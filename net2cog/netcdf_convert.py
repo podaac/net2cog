@@ -327,11 +327,11 @@ def process_dimension_error_exception(
     temp_file_name: str,
 ):
     """ Handles an InvalidDimensionOrder exception by attempting
-    to reorder the dimensions of a NetCDF variable to match the expected
+    to swap the dimensions of a NetCDF variable to match the expected
     spatial layout for raster conversion.
 
-    This function applies a dimension reordering strategy using
-    `reorder_dimensions` to correct issues where the variable's dimensions
+    This function applies a dimension swap strategy using
+    `swap_dims` to correct issues where the variable's dimensions
     are not in a valid order for rasterization
     (e.g., time-first or non-spatial-first layouts). It then retries
     writing the variable to a temporary GeoTIFF file. If the conversion

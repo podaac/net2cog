@@ -22,6 +22,7 @@ from net2cog.netcdf_convert import (
     _write_cogtiff,
     process_value_error_exception,
     process_invalid_dimension_order_exception,
+    process_dimension_error_exception,
 )
 
 
@@ -467,6 +468,34 @@ def test_process_value_error_exception_catch_value_error(
             test_file,
         )
 
+def test_process_value_error_exception_catch_exception(
+    input_datatree,
+    logger,
+    temp_dir
+):
+    """Test that process_value_error_exception re-raises a Net2CogError
+    when the handler fails to resolve encoding issues.
+
+    """
+    test_file = pathlib.Path(temp_dir, 'output.tif')
+    value_error_message = f"Variable None has conflicting _FillValue (255) " \
+                          f"and missing_value (200). Cannot encode data."
+
+    expected_exception = (
+        "Variable group_five/variable_two cannot be converted to tif: "
+        "Invalid dimension order. Expected order: ('y', 'x'). You can use "
+        "`DataArray.transpose('y', 'x')` to reorder your dimensions. Data variable: variable_two"
+    )
+
+    with pytest.raises(Net2CogError, match=re.escape(expected_exception)):
+        process_value_error_exception(
+            input_datatree,
+            "group_five/variable_two",
+            value_error_message,
+            logger,
+            test_file,
+        )
+
 def test_process_invalid_dimension_order_exception(
     input_datatree_reorder_3d,
     logger,
@@ -502,3 +531,30 @@ def test_process_invalid_dimension_order_exception(
                 logger,
                 test_file,
             )
+
+def test_process_dimension_error_exception_catch_exception(
+    input_datatree,
+    logger,
+    temp_dir
+):
+    """Test that process_dimension_error_exception re-raises a Net2CogError
+    when fails to create a new DataArray with swapped dimensions.
+
+    """
+    test_file = pathlib.Path(temp_dir, 'output.tif')
+    value_error_message = f"Variable None has conflicting _FillValue (255) " \
+                          f"and missing_value (200). Cannot encode data."
+
+    expected_exception = (
+        "Variable group_five/variable_two cannot be converted to tif: "
+        "Variable 'y': Using a DataArray object to construct a variable "
+        "is ambiguous, please extract the data using the .data property."
+    )
+
+    with pytest.raises(Net2CogError, match=re.escape(expected_exception)):
+        process_dimension_error_exception(
+            input_datatree,
+            "group_five/variable_two",
+            logger,
+            test_file,
+        )
