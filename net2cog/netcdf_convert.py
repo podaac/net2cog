@@ -281,10 +281,10 @@ def process_value_error_exception(
         nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
     except ValueError as valerr:
         raise ValueError(valerr) from valerr
-    except (RuntimeError, Exception, Net2CogError) as runerr:
+    except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
-                    variable_path, runerr)
-        raise Net2CogError(variable_path, runerr) from runerr
+                    variable_path, err)
+        raise Net2CogError(variable_path, err) from err
 
 
 def process_invalid_dimension_order_exception(
@@ -314,10 +314,10 @@ def process_invalid_dimension_order_exception(
     try:
         nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
         nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
-    except (RuntimeError, Exception, Net2CogError) as runerr:
+    except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
-                    variable_path, runerr)
-        raise Net2CogError(variable_path, runerr) from runerr
+                    variable_path, err)
+        raise Net2CogError(variable_path, err) from err
 
 
 def process_dimension_error_exception(
@@ -352,7 +352,7 @@ def process_dimension_error_exception(
     try:
         nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
         nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
-    except (RuntimeError, Exception) as err:
+    except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
                     variable_path, err)
         raise Net2CogError(variable_path, err) from err

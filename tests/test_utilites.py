@@ -6,10 +6,10 @@ test_utilities.py
 Test the net2cog utilites functionality.
 """
 
+import re
 import pytest
 import numpy as np
 import xarray as xr
-import re
 from net2cog.netcdf_convert import Net2CogError
 from net2cog.utilities import (
     resolve_relative_path,
@@ -701,10 +701,11 @@ def test_empty_coords(logger):
 )
 def test_get_value_error_handler_valid(input_datatree, value_error_message, expected_handler):
     """Test that known ValueError messages return the correct handler."""
-    handler = get_value_error_handler(input_datatree,
-                                      "group_five/variable_two",
-                                      value_error_message
-                                     )
+    handler = get_value_error_handler(
+        input_datatree,
+        "group_five/variable_two",
+        value_error_message
+    )
     assert handler == expected_handler
 
 @pytest.mark.parametrize(
@@ -717,10 +718,11 @@ def test_get_value_error_handler_valid(input_datatree, value_error_message, expe
 def test_get_value_error_handler_invalid(input_datatree, value_error_message):
     """Test that unrecognized ValueError messages raise a ValueError."""
     with pytest.raises(ValueError, match=re.escape(value_error_message)):
-        get_value_error_handler(input_datatree,
-                                "group_five/variable_two",
-                                value_error_message
-                               )
+        get_value_error_handler(
+            input_datatree,
+            "group_five/variable_two",
+            value_error_message
+        )
 
 @pytest.mark.parametrize(
     "variable_path, expected_fill, expected_missing",

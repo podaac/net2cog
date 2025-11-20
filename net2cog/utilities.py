@@ -8,7 +8,6 @@ Utility functions for use within the net2cog service.
 
 from logging import Logger
 from collections.abc import Callable
-from typing import Tuple
 import xarray as xr
 import numpy as np
 
@@ -417,11 +416,11 @@ def get_value_error_handler(
     fill_missing_value_keywords = ['_FillValue', 'missing_value']
 
     if all(word in value_error_message for word in fill_missing_value_keywords):
-        fill_value, missing_value = (
-            get_fillvalue_and_missing_value(nc_xarray, variable_path)
+        fill_value, missing_value = get_fillvalue_and_missing_value(
+            nc_xarray, variable_path,
         )
 
-        if fill_value is not None and missing_value is not None:
+        if fill_value is not None and missing_value is not None and fill_value != missing_value:
             return apply_fillvalue_to_missing_value
 
     raise ValueError(value_error_message)
@@ -462,11 +461,8 @@ def apply_fillvalue_to_missing_value(
     nc_xarray_tmp = nc_xarray.copy()
     values_tmp = nc_xarray_tmp[variable_path].values.copy()
 
-    # Use np.nditer with write access
-    with np.nditer(values_tmp, flags=['multi_index'], op_flags=['readwrite']) as values_iter:
-        for values in values_iter:
-            if values[...] == missing_value:
-                values[...] = fill_value
+    # Replace all missing_value data with fill_value
+    values_tmp[np.where(values_tmp == missing_value)] = fill_value
 
     # Assign updated values back to the DataTree
     nc_xarray_tmp[variable_path].values = values_tmp
@@ -474,7 +470,7 @@ def apply_fillvalue_to_missing_value(
     # Delete missing_value
     if 'missing_value' in nc_xarray_tmp[variable_path].encoding:
         del nc_xarray_tmp[variable_path].encoding['missing_value']
-    elif 'missing_value' in nc_xarray_tmp[variable_path].attrs:
+    if 'missing_value' in nc_xarray_tmp[variable_path].attrs:
         del nc_xarray_tmp[variable_path].attrs['missing_value']
 
     # Add process_note attribute that explains this processing
@@ -490,9 +486,10 @@ def apply_fillvalue_to_missing_value(
 
 def get_fillvalue_and_missing_value(
         nc_xarray: xr.DataTree, variable_path: str
-) -> Tuple[
-           np.uint16 | np.uint32 | np.float32 | None,
-           np.uint16 | np.uint32 | np.float32 | None]:
+) -> tuple[
+    np.uint | np.floating | None,
+    np.uint | np.floating | None
+]:
     """
     Determine the appropriate _FillValue and missing_value for a given variable.
 
@@ -511,14 +508,11 @@ def get_fillvalue_and_missing_value(
 
     Returns
     -------
-        Tuple[np.uint16 | np.uint32 | np.float32 | None,
-              np.uint16 | np.uint32 | np.float32 | None]:
+        tuple[np.uint | np.floating | None,
+              np.uint | np.floating | None];
         A tuple containing the _FillValue and missing_value or None.
 
     """
-    fill_value = None
-    missing_value = None
-
     fill_value = nc_xarray[variable_path].encoding.get("_FillValue")
     if fill_value is None:
         fill_value = nc_xarray[variable_path].attrs.get('_FillValue')
