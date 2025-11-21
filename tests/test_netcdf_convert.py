@@ -496,8 +496,17 @@ def test_process_value_error_exception_catch_exception(
             test_file,
         )
 
+@pytest.mark.parametrize(
+    "variable_path",
+    [
+        'group_four/science_five'
+        'group_five/science_six',
+        'group_six/science_seven',
+    ]
+)
 def test_process_invalid_dimension_order_exception(
     input_datatree_reorder_3d,
+    variable_path,
     logger,
     temp_dir
 ):
@@ -505,32 +514,15 @@ def test_process_invalid_dimension_order_exception(
     coordinates are not parsed correctly.
 
     """
-    test_args = [
-        [
-            "Test Net2CogError (abc, def, ghi) x,y not exisit",
-            "group_four/science_five",
-        ],
-        [
-            "Test Net2CogError (y, x, '') z is empty string",
-            "group_five/science_six",
-        ],
-        [
-            "Test Net2CogError for 4 dimension (y, x, z, w)",
-            "group_six/science_seven",
-        ],
-    ]
-
     test_file = pathlib.Path(temp_dir, 'output.tif')
 
-    for description, variable_path in test_args:
-        print(description)
-        with pytest.raises(Net2CogError):
-            process_invalid_dimension_order_exception(
-                input_datatree_reorder_3d,
-                variable_path,
-                logger,
-                test_file,
-            )
+    with pytest.raises(Net2CogError):
+        process_invalid_dimension_order_exception(
+            input_datatree_reorder_3d,
+            variable_path,
+            logger,
+            test_file,
+        )
 
 def test_process_dimension_error_exception_catch_exception(
     input_datatree,
