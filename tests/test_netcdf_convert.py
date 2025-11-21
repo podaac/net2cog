@@ -440,34 +440,6 @@ def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_t
             logger
         )
 
-@pytest.mark.parametrize(
-    "value_error_message",
-    [
-        "Variable None has missing_value (200). Cannot encode data.",
-        "Variable None has _FillValue (255). Cannot encode data.",
-    ]
-)
-def test_process_value_error_exception_catch_value_error(
-    input_datatree,
-    value_error_message,
-    logger,
-    temp_dir
-):
-    """Test that process_value_error_exception re-raises a ValueError
-    when the handler fails to resolve encoding issues.
-
-    """
-    test_file = pathlib.Path(temp_dir, 'output.tif')
-
-    with pytest.raises(ValueError, match=re.escape(value_error_message)):
-        process_value_error_exception(
-            input_datatree,
-            "group_five/variable_two",
-            value_error_message,
-            logger,
-            test_file,
-        )
-
 def test_process_value_error_exception_catch_exception(
     input_datatree,
     logger,

@@ -709,22 +709,6 @@ def test_get_value_error_handler_valid(input_datatree, value_error_message, expe
     assert handler == expected_handler
 
 @pytest.mark.parametrize(
-    "value_error_message",
-    [
-        "Variable None has missing_value (200). Cannot encode data.",
-        "Variable None has _FillValue (255). Cannot encode data.",
-    ]
-)
-def test_get_value_error_handler_invalid(input_datatree, value_error_message):
-    """Test that unrecognized ValueError messages raise a ValueError."""
-    with pytest.raises(ValueError, match=re.escape(value_error_message)):
-        get_value_error_handler(
-            input_datatree,
-            "group_five/variable_two",
-            value_error_message
-        )
-
-@pytest.mark.parametrize(
     "variable_path, expected_fill, expected_missing",
     [
         ("group_five/variable_one", 355, 300),

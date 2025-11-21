@@ -411,21 +411,16 @@ def get_value_error_handler(
         or any other process.
 
     """
-    # ValueError: Variable None has conflicting _FillValue (255) and
-    # missing_value (200).  Cannot encode data.
-    fill_missing_value_keywords = ['_FillValue', 'missing_value']
+    fill_value, missing_value = get_fillvalue_and_missing_value(
+        nc_xarray, variable_path,
+    )
 
-    if all(word in value_error_message for word in fill_missing_value_keywords):
-        fill_value, missing_value = get_fillvalue_and_missing_value(
-            nc_xarray, variable_path,
-        )
-
-        if (
-            fill_value is not None
-            and missing_value is not None
-            and fill_value != missing_value
-        ):
-            return apply_fillvalue_to_missing_value
+    if (
+        fill_value is not None
+        and missing_value is not None
+        and fill_value != missing_value
+    ):
+        return apply_fillvalue_to_missing_value
 
     raise ValueError(value_error_message)
 
