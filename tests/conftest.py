@@ -353,8 +353,60 @@ def input_datatree():
         coords={'x': [0, 1], 'y': [0, 1]},
         attrs={
             "grid_mapping": "science_one",
+            "_FillValue": 355,
+            "missing_value": 300, 
         },
     )
+
+    dt["group_five/variable_two"] = xr.DataArray(
+        data=np.array([[1, 2], [3, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "grid_mapping": "science_one",
+        },
+    )
+    dt["group_five/variable_two"].encoding["_FillValue"] = 255
+    dt["group_five/variable_two"].encoding["missing_value"] = 200
+
+    dt["group_six/variable_one"] = xr.DataArray(
+        data=np.array([[1, 999], [999, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "_FillValue": -999,
+            "missing_value": 999, 
+        },
+    )
+
+    dt["group_six/variable_two"] = xr.DataArray(
+        data=np.array([[1, 999], [999, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "_FillValue": -999,
+        },
+    )
+
+    dt["group_six/variable_three"] = xr.DataArray(
+        data=np.array([[1, 999], [999, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "missing_value": 999, 
+        },
+    )
+
+    dt["group_six/variable_four"] = xr.DataArray(
+        data=np.array([[1, 2], [3, 4]]),
+        dims=('x', 'y'),
+        coords={'x': [0, 1], 'y': [0, 1]},
+        attrs={
+            "grid_mapping": "science_one",
+        },
+    )
+    dt["group_six/variable_four"].encoding["_FillValue"] = 255
+    dt["group_six/variable_four"].encoding["missing_value"] = 0
 
     return dt
 
