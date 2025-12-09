@@ -1,0 +1,17 @@
+{
+    "id": "test",
+    "stac_version": "1.0.0-beta.2",
+    "description": "test",
+    "links": [
+        {
+            "rel": "root",
+            "href": "./catalog.json",
+            "type": "application/json"
+        },
+        {
+            "rel": "item",
+            "href": "./MISR_AM1_CGAS_OCT_12_2022_F15_0032_subsetted.json",
+            "type": "application/json"
+        }
+    ]
+}

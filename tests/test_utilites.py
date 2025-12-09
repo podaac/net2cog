@@ -20,6 +20,7 @@ from net2cog.utilities import (
     get_value_error_handler,
     apply_fillvalue_to_missing_value,
     get_fillvalue_and_missing_value,
+    rename_dimensions,
 )
 
 
@@ -400,7 +401,7 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
         ],
         [
             "Test reordered (XDim, YDim, ZDim) to (ZDim, YDim, XDim)",
-            "group_seven/science_eight",
+            "group_four/science_five",
             ("ZDim", "YDim", "XDim"),
         ],
     ]
@@ -412,45 +413,26 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
         assert nc_xarray_tmp[variable_path].dims == expected_path
 
 
-def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
+def test_reorder_3d_dimensions_exception(input_datatree_bad_3d_variables):
     """Ensure that the function handles exceptions when missing
     coordinates are not parsed correctly.
-
-    Tree structure in input_datatree:
-
-    |- science_one(lat, lon, time)
-    |- lat(lat)
-    |- lon(lon)
-    |- time(tim)
-    |- group_one
-       |- science_two(latitude, longitude, time)
-    |- group_two
-       |- science_three(x, y, z)
-        |- group_four
-          | science_four(x-dim, y-dim, z-dim)
-    |- group_four
-       |- science_five(abc, def, ghi)
-    |- group_five
-       |- science_six(y, x, '')
-    |- group_six
-       |- science_six(y, x, z, w)
 
     """
 
     test_args = [
         [
             "Test Net2CogError (abc, def, ghi) x,y not exisit",
-            "group_four/science_five",
+            "group_one/science_one",
             None,
         ],
         [
             "Test Net2CogError (y, x, '') z is empty string",
-            "group_five/science_six",
+            "group_two/science_two",
             None,
         ],
         [
             "Test Net2CogError for 4 dimension (y, x, z, w)",
-            "group_six/science_seven",
+            "group_three/science_three",
             None,
         ],
     ]
@@ -458,7 +440,7 @@ def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
     for description, variable_path, expected_path in test_args:
         print(description)
         with pytest.raises(Net2CogError):
-            reorder_dimensions(input_datatree_reorder_3d, variable_path)
+            reorder_dimensions(input_datatree_bad_3d_variables, variable_path)
 
 
 @pytest.mark.parametrize(
@@ -787,3 +769,38 @@ def test_apply_fillvalue_to_missing_value_no_fillvalue_exception(input_datatree)
             input_datatree,
             "group_six/variable_three"
         )
+
+def test_rename_3d_dimensions(input_datatree_reorder_3d):
+    """Ensure that a 3-dimensional array is rename to standard 'x'
+    and 'y' to create the correct dimension order in a new DataTree
+
+    """
+
+    test_args = [
+        [
+            "Test rename (lat, lon, time) to (y, x, time)",
+            "science_one",
+            ("y", "x", "time"),
+        ],
+        [
+            "Test reordered (latitude, longitude, time) to (y, x, time)",
+            "group_one/science_two",
+            ("y", "x", "time"),
+        ],
+        [
+            "Test reordered (y-dim, x-dim, z-dim) to (y, x, z-dim)",
+            "group_two/group_three/science_four",
+            ("y", "x", "z-dim"),
+        ],
+        [
+            "Test reordered (XDim, YDim, ZDim) to (x, y, ZDim)",
+            "group_four/science_five",
+            ("x", "y", "ZDim"),
+        ],
+    ]
+
+    for description, variable_path, expected_path in test_args:
+        print(description)
+        nc_xarray_tmp = rename_dimensions(input_datatree_reorder_3d, variable_path)
+
+        assert nc_xarray_tmp[variable_path].dims == expected_path
