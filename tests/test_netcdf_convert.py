@@ -9,7 +9,6 @@ import re
 import pathlib
 import subprocess
 from os.path import basename, splitext
-from unittest.mock import patch
 from rio_cogeo.cogeo import cog_validate, cog_info
 
 import numpy as np
