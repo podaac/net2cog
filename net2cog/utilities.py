@@ -248,7 +248,7 @@ def is_valid_shape(
     variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
 ) -> bool:
     """Ensure the variable has the required 2 or 3 dimensions,
-    as 4‑dimensional structures are not directly supported.
+    as 4-dimensional structures are not directly supported.
 
     Parameters
     ----------

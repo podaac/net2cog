@@ -564,7 +564,7 @@ def test_mirs_am1_cgas_v4_all_variable(
         logger,
     )
 
-   # Check results are as expected:
+    # Check results are as expected:
     assert len(results) == 20, "Incorrect number of output file names."
 
     for entry in results:

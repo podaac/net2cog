@@ -155,7 +155,7 @@ def smap_rss_l3_sss_item(copy_test_file: Callable, smap_rss_l3_sss_file):
     SMAP granule as hosted in the per-test temporary directory.
 
     """
-    temporary_stac_item_file =  copy_test_file(
+    temporary_stac_item_file = copy_test_file(
         DataFiles.SMAP_RSS_L3_SSS_COLLECTION,
         DataFiles.SMAP_RSS_L3_SSS_STAC_ITEM
     )
@@ -268,7 +268,7 @@ def spl3ftp_e_variable_selection_file(copy_test_file: Callable):
 
 @fixture(scope="function")
 def mirs_am1_cgas_v4_subsetted_variable(copy_test_file: Callable):
-    """Path to MISR_AM1_CGASinput file, copied into the test directory.
+    """Path to MISR_AM1_CGAS input file, copied into the test directory.
 
     This file is already subsetted and to be a bounding box region to
     reduce file size in the repository.
