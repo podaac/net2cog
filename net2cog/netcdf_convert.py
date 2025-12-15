@@ -20,7 +20,11 @@ import xarray as xr
 from rasterio import CRS
 from rio_cogeo.cogeo import cog_translate
 from rio_cogeo.profiles import cog_profiles
-from rioxarray.exceptions import DimensionError, InvalidDimensionOrder
+from rioxarray.exceptions import (
+    DimensionError,
+    InvalidDimensionOrder,
+    MissingSpatialDimensionError
+)
 from pyproj.crs import CRS as pyCRS
 from pyproj.exceptions import CRSError
 from net2cog.utilities import (
@@ -31,6 +35,7 @@ from net2cog.utilities import (
     is_valid_dtype,
     is_valid_spatial_dimensions,
     get_value_error_handler,
+    rename_dimensions,
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -124,6 +129,12 @@ def _write_cogtiff(
                                                       variable_path,
                                                       logger,
                                                       temp_file_name)
+        except MissingSpatialDimensionError as dmerr:
+            logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
+            process_missing_spatial_dimension_error_exception(nc_xarray,
+                                                              variable_path,
+                                                              logger,
+                                                              temp_file_name)
         except DimensionError as dmerr:
             logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
             process_dimension_error_exception(nc_xarray,
@@ -351,6 +362,45 @@ def process_dimension_error_exception(
     """
     try:
         nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
+        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+    except Exception as err:    # pylint: disable=broad-except
+        logger.info("Variable %s cannot be converted to tif: %s",
+                    variable_path, err)
+        raise Net2CogError(variable_path, err) from err
+
+
+def process_missing_spatial_dimension_error_exception(
+    nc_xarray: xr.DataTree,
+    variable_path: str,
+    logger: Logger,
+    temp_file_name: str,
+):
+    """ Handles an MissingSpatialDimensionError exception by attempting
+    to reorder then rename coordinates to standard 'x' and 'y' required
+    by rasterio
+
+    This function uses a dimension renaming strategy with `.rename`
+    to fix cases where the variable’s y/x dimensions are not found.
+    By rename coordinates to standard 'x' and 'y' required by rasterio,
+    the issue can be resolved. It then retries writing the variable to
+    a temporary GeoTIFF file. If the conversion fails again, it logs
+    the error and raises a `Net2CogError`.
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+    logger : logging.Logger
+        Python Logger object for emitting log messages.
+    temp_file_name: str
+        rio.to_raster outputs the processed .tif file to temp location
+
+    """
+    try:
+        nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
+        nc_xarray_tmp = rename_dimensions(nc_xarray_tmp, variable_path)
         nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
     except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",

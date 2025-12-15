@@ -151,10 +151,9 @@ files = [
 name = "cffi"
 version = "1.17.1"
 description = "Foreign Function Interface for Python calling C code."
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "cffi-1.17.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:df8b1c11f177bc2313ec4b2d46baec87a5f3e71fc8b45dab2ee7cae86d9aba14"},
     {file = "cffi-1.17.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8f2cdc858323644ab277e9bb925ad72ae0e67f69e804f4898c070998d50b1a67"},
@@ -533,10 +532,9 @@ toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
 name = "deprecation"
 version = "2.1.0"
 description = "A library to handle automated deprecations"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a"},
     {file = "deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff"},
@@ -611,28 +609,27 @@ pyflakes = ">=3.1.0,<3.2.0"
 
 [[package]]
 name = "harmony-service-lib"
-version = "2.7.0"
+version = "2.11.0"
 description = "A library for Python-based Harmony services to parse incoming message, fetch data, stage data, and call back to Harmony."
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
-    {file = "harmony_service_lib-2.7.0-py3-none-any.whl", hash = "sha256:e62326e92c50d37865ed46e8f4d146358bf23889b2cf14b6fe41ffe43ea17d52"},
-    {file = "harmony_service_lib-2.7.0.tar.gz", hash = "sha256:74e96785e6194420f667e4c9e38404bef69ad22e372a091c59aca443c994bcb2"},
+    {file = "harmony_service_lib-2.11.0-py3-none-any.whl", hash = "sha256:0bcfc457915692bfd15c590e76152426fb25dc906cbaf363f09634eb496684e2"},
+    {file = "harmony_service_lib-2.11.0.tar.gz", hash = "sha256:3306a34e6fa7a09dabe7a1e30dc4eaf42ec478305a527836b653ce4c658bb84a"},
 ]
 
 [package.dependencies]
-boto3 = ">=1.14,<2.0"
+boto3 = "*"
 deprecation = ">=2.1.0,<2.2.0"
 pynacl = ">=1.4,<2.0"
 pystac = ">=1.0.0"
 python-json-logger = ">=2.0.1,<2.1.0"
-requests = ">=2.24,<3.0"
-urllib3 = ">=1.26.9,<1.27.0"
+requests = ">=2.31,<3.0"
+urllib3 = ">=2.6.1,<2.7.0"
 
 [package.extras]
-dev = ["Faker (>=8.1.3,<8.2.0)", "autopep8 (>=1.5,<2.0)", "debugpy (>=1.2,<2.0)", "flake8 (>=6.1.0)", "freezegun (>=1.5.1,<1.6.0)", "ipython (>=8.10.0,<8.11.0)", "jedi (>=0.17.2,<0.18.0)", "packaging (>=24.1,<25.0)", "parameterized (>=0.7,<1.0)", "pycodestyle (>=2.9.1)", "pytest (>=7.2.0,<7.3.0)", "pytest-cov (>=2.11,<3.0)", "pytest-mock (>=3.5,<4.0)", "python-language-server (>=0.35,<1.0)", "responses (>=0.22.0,<0.23.0)", "safety (==3.2.3)", "safety-schemas (==0.0.5)", "setuptools (==70.0.0)"]
+dev = ["Faker (>=8.1.3,<8.2.0)", "autopep8 (>=1.5,<2.0)", "debugpy (>=1.2,<2.0)", "flake8 (>=6.1.0)", "freezegun (>=1.5.1,<1.6.0)", "ipython (>=8.10.0,<8.11.0)", "jedi (>=0.17.2,<0.18.0)", "packaging (>=24.1,<25.0)", "parameterized (>=0.7,<1.0)", "pycodestyle (>=2.9.1)", "pytest (>=7.2.0,<7.3.0)", "pytest-cov (>=2.11,<3.0)", "pytest-mock (>=3.5,<4.0)", "python-language-server (>=0.35,<1.0)", "responses (>=0.22.0,<0.23.0)", "safety (==3.2.3)", "safety-schemas (==0.0.5)", "setuptools (==78.1.1)"]
 
 [[package]]
 name = "idna"
@@ -1173,10 +1170,9 @@ files = [
 name = "pycparser"
 version = "2.22"
 description = "C parser in Python"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"},
     {file = "pycparser-2.22.tar.gz", hash = "sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6"},
@@ -1376,10 +1372,9 @@ testutils = ["gitpython (>3)"]
 name = "pynacl"
 version = "1.5.0"
 description = "Python binding to the Networking and Cryptography (NaCl) library"
-optional = true
+optional = false
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "PyNaCl-1.5.0-cp36-abi3-macosx_10_10_universal2.whl", hash = "sha256:401002a4aaa07c9414132aaed7f6836ff98f59277a234704ff66878c2ee4a0d1"},
     {file = "PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:52cb72a79269189d4e0dc537556f4740f7f0a9ec41c1322598799b0bdad4ef92"},
@@ -1465,10 +1460,9 @@ certifi = "*"
 name = "pystac"
 version = "1.13.0"
 description = "Python library for working with the SpatioTemporal Asset Catalog (STAC) specification"
-optional = true
+optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "pystac-1.13.0-py3-none-any.whl", hash = "sha256:fa22cc04e58bbbc22c8d049e715a37ab803802d8d1334afc48e6eab64c5946e4"},
     {file = "pystac-1.13.0.tar.gz", hash = "sha256:9e5d908a390eed800228a956d7f3577c8f0cbac49806aaa0b14b7c4e06520b8c"},
@@ -1544,10 +1538,9 @@ six = ">=1.5"
 name = "python-json-logger"
 version = "2.0.7"
 description = "A python library adding a json log formatter"
-optional = true
+optional = false
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "extra == \"harmony\""
 files = [
     {file = "python-json-logger-2.0.7.tar.gz", hash = "sha256:23e7ec02d34237c5aa1e29a070193a4ea87583bb4e7f8fd06d3de8264c4b2e1c"},
     {file = "python_json_logger-2.0.7-py3-none-any.whl", hash = "sha256:f380b826a991ebbe3de4d897aeec42760035ac760345e57b812938dc8b35e2bd"},
@@ -1957,20 +1950,21 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "1.26.20"
+version = "2.6.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
+python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "urllib3-1.26.20-py2.py3-none-any.whl", hash = "sha256:0ed14ccfbf1c30a9072c7ca157e4319b70d65f623e91e7b32fadb2853431016e"},
-    {file = "urllib3-1.26.20.tar.gz", hash = "sha256:40c2dc0c681e47eb8f90e7e27bf6ff7df2e677421fd46756da1161c39ca70d32"},
+    {file = "urllib3-2.6.2-py3-none-any.whl", hash = "sha256:ec21cddfe7724fc7cb4ba4bea7aa8e2ef36f607a4bab81aa6ce42a13dc3f03dd"},
+    {file = "urllib3-2.6.2.tar.gz", hash = "sha256:016f9c98bb7e98085cb2b4b17b87d2c702975664e4f060c6532e64d1c1a5e797"},
 ]
 
 [package.extras]
-brotli = ["brotli (==1.0.9) ; os_name != \"nt\" and python_version < \"3\" and platform_python_implementation == \"CPython\"", "brotli (>=1.0.9) ; python_version >= \"3\" and platform_python_implementation == \"CPython\"", "brotlicffi (>=0.8.0) ; (os_name != \"nt\" or python_version >= \"3\") and platform_python_implementation != \"CPython\"", "brotlipy (>=0.6.0) ; os_name == \"nt\" and python_version < \"3\""]
-secure = ["certifi", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "ipaddress ; python_version == \"2.7\"", "pyOpenSSL (>=0.14)", "urllib3-secure-extra"]
-socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+brotli = ["brotli (>=1.2.0) ; platform_python_implementation == \"CPython\"", "brotlicffi (>=1.2.0.0) ; platform_python_implementation != \"CPython\""]
+h2 = ["h2 (>=4,<5)"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 
 [[package]]
 name = "wrapt"
@@ -2121,4 +2115,4 @@ harmony = ["harmony-service-lib"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "c494bd6ba1c00ac6712ca31eb7249f03e56040fe1fa9f99fd99cf71921dcdeb1"
+content-hash = "44c1a2ae675f975aa24ee6e7757283a6f8535550a316c97ed0e15064d51f7714"

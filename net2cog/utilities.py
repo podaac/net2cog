@@ -11,8 +11,8 @@ from collections.abc import Callable
 import xarray as xr
 import numpy as np
 
-X_COORDINATE = ("lon", "longitude", "x", "x-dim", "XDim")
-Y_COORDINATE = ("lat", "latitude", "y", "y-dim", "YDim")
+X_COORDINATE = ("lon", "longitude", "Longitude", "x", "x-dim", "XDim")
+Y_COORDINATE = ("lat", "latitude", "Latitude", "y", "y-dim", "YDim")
 DTYPE_SUPPORTED = [
     'ubyte',
     'uint8',
@@ -99,6 +99,38 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
         nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
             z_dim[0], y_dim[0], x_dim[0]
         )
+
+    return nc_xarray_tmp
+
+
+def rename_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTree:
+    """This function rename coordinates to standard 'x' and 'y'
+    required by rasterio
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+
+    Returns
+    -------
+    xr.DataTree
+        New DataTree with proper order dimensions
+
+    """
+    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
+    nc_xarray_tmp = nc_xarray.copy()
+
+    # Find the union of X_COORDINATE/Y_COORDINATE to DataTree.dims
+    x_dim = list(set(X_COORDINATE) & set(nc_xarray_tmp[variable_path].dims))
+    y_dim = list(set(Y_COORDINATE) & set(nc_xarray_tmp[variable_path].dims))
+
+    # Rename coordinates to standard 'x' and 'y' required by rasterio
+    nc_xarray_tmp[variable_path] = (
+        nc_xarray_tmp[variable_path].rename({y_dim[0]: 'y', x_dim[0]: 'x'})
+    )
 
     return nc_xarray_tmp
 
@@ -215,7 +247,8 @@ def construct_absolute_path(group_path: str, reference: str) -> str:
 def is_valid_shape(
     variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
 ) -> bool:
-    """Ensure variable has required dimensions.
+    """Ensure the variable has the required 2 or 3 dimensions,
+    as 4-dimensional structures are not directly supported.
 
     Parameters
     ----------
@@ -230,10 +263,10 @@ def is_valid_shape(
     -------
     bool
         False variables.shape < 2
-        True variables.shape >= 2
+        True variables.shape >= 2 variables.shape < 4
 
     """
-    if len(variable.shape) >= 2:
+    if len(variable.shape) >= 2 and len(variable.shape) < 4:
         return True
 
     logger.info(
@@ -301,19 +334,15 @@ def is_valid_spatial_dimensions(
 
             * {"lon", "lat"}
             * {"longitude", "latitude"}
+            * {"Longitude", "Latitude"}
             * {"x", "y"}
             * {"x-dim", "y-dim"}
             * {"XDim", "YDim"}  (Convert to lowercase before compare)
 
     """
-    variable_dims = [dim.lower() for dim in variable.dims]
-    if (
-        {"lon", "lat"}.issubset(set(variable_dims))
-        or {"longitude", "latitude"}.issubset(set(variable_dims))
-        or {"x", "y"}.issubset(set(variable_dims))
-        or {"x-dim", "y-dim"}.issubset(set(variable_dims))
-        or {"xdim", "ydim"}.issubset(set(variable_dims))
-    ):
+    x_dim = list(set(X_COORDINATE) & set(variable.dims))
+    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
+    if x_dim and y_dim:
         return True
 
     # Fallback: check CF-compliant standard_name and units

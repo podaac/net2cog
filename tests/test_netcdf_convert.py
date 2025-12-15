@@ -23,14 +23,15 @@ from net2cog.netcdf_convert import (
     process_value_error_exception,
     process_invalid_dimension_order_exception,
     process_dimension_error_exception,
+    process_missing_spatial_dimension_error_exception,
 )
 
 
-def test_single_cog_generation(smap_file, temp_dir, logger):
+def test_single_cog_generation(smap_rss_l3_sss_file, temp_dir, logger):
     """
     Test that the conversion works and the output is a valid cloud optimized geotiff
     """
-    test_file = pathlib.Path(temp_dir, smap_file)
+    test_file = pathlib.Path(temp_dir, smap_rss_l3_sss_file)
 
     results = netcdf_converter(
         test_file,
@@ -49,13 +50,13 @@ def test_single_cog_generation(smap_file, temp_dir, logger):
 
 
 @pytest.mark.parametrize(['in_bands'], [[['gland', 'fland', 'sss_smap']]])
-def test_multiple_variable_selection(in_bands, temp_dir, smap_file, logger):
+def test_multiple_variable_selection(in_bands, temp_dir, smap_rss_l3_sss_file, logger):
     """
     Verify the correct bands asked for by the user are being converted
     """
 
     in_bands = sorted(in_bands)
-    test_file = pathlib.Path(temp_dir, smap_file)
+    test_file = pathlib.Path(temp_dir, smap_rss_l3_sss_file)
 
     results = netcdf_converter(
         test_file,
@@ -76,9 +77,9 @@ def test_multiple_variable_selection(in_bands, temp_dir, smap_file, logger):
     assert in_bands == out_bands, 'Incorrect output file names.'
 
 
-def test_nested_variable_selection(temp_dir, logger, nested_file):
+def test_nested_variable_selection(temp_dir, logger, spl4cmdl_nested_file):
     """Verify a nested variable in a hierarchical granule can be converted."""
-    test_file = pathlib.Path(temp_dir, nested_file)
+    test_file = pathlib.Path(temp_dir, spl4cmdl_nested_file)
 
     # Process test file:
     results = netcdf_converter(
@@ -98,13 +99,13 @@ def test_nested_variable_selection(temp_dir, logger, nested_file):
 
 
 @pytest.mark.parametrize(['in_bands'], [[['waldo']]])
-def test_unknown_band_selection(in_bands, temp_dir, smap_file, logger):
+def test_unknown_band_selection(in_bands, temp_dir, smap_rss_l3_sss_file, logger):
     """
     Verify an incorrect band asked for by the user raises an exception
     """
 
     in_bands = sorted(in_bands)
-    test_file = pathlib.Path(temp_dir, smap_file)
+    test_file = pathlib.Path(temp_dir, smap_rss_l3_sss_file)
 
     with pytest.raises(Net2CogError):
         netcdf_converter(
@@ -115,9 +116,9 @@ def test_unknown_band_selection(in_bands, temp_dir, smap_file, logger):
         )
 
 
-def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
+def test_non_spatial_variable_fails(temp_dir, logger, spl4cmdl_nested_file):
     """Verify a request for a non-spatial variable raises expected exception."""
-    test_file = pathlib.Path(temp_dir, nested_file)
+    test_file = pathlib.Path(temp_dir, spl4cmdl_nested_file)
     expected_exception = (
         'EASE2_global_projection does not have spatial dimensions '
         'such as lat/lon, x/y, latitude/longitude, x-dim/y-dim, or XDim/YDim'
@@ -132,9 +133,9 @@ def test_non_spatial_variable_fails(temp_dir, logger, nested_file):
         )
 
 
-def test_excluded_variables_not_converted(temp_dir, logger, smap_file):
+def test_excluded_variables_not_converted(temp_dir, logger, smap_rss_l3_sss_file):
     """Ensure variables that should be excluded are not converted."""
-    test_file = pathlib.Path(temp_dir, smap_file)
+    test_file = pathlib.Path(temp_dir, smap_rss_l3_sss_file)
 
     requested_variables = ['gland', 'lat', 'lon', 'time']
 
@@ -506,8 +507,6 @@ def test_process_dimension_error_exception_catch_exception(
 
     """
     test_file = pathlib.Path(temp_dir, 'output.tif')
-    value_error_message = f"Variable None has conflicting _FillValue (255) " \
-                          f"and missing_value (200). Cannot encode data."
 
     expected_exception = (
         "Variable group_five/variable_two cannot be converted to tif: "
@@ -522,3 +521,80 @@ def test_process_dimension_error_exception_catch_exception(
             logger,
             test_file,
         )
+
+
+def test_mirs_am1_cgas_v4_nested_variable(
+    temp_dir, logger, mirs_am1_cgas_v4_subsetted_variable
+):
+    """Verify a MISR_AM1_CGAS nested variable with 3D in a hierarchical granule
+    can be converted.
+
+    """
+    test_file = pathlib.Path(temp_dir, mirs_am1_cgas_v4_subsetted_variable)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ['Aerosol_Parameter_Average/Absorbing_Optical_Depth'],
+        logger,
+    )
+
+    # Check results are as expected:
+    assert len(results) == 1, "Incorrect number of output file names."
+
+    assert pathlib.Path(results[0]).is_file(), "No file created."
+    assert (
+        basename(results[0]) == "Aerosol_Parameter_Average_Absorbing_Optical_Depth.tif"
+    ), "Incorrect output file name"
+    assert cog_validate(pathlib.Path(results[0]))[0]
+
+
+def test_mirs_am1_cgas_v4_all_variable(
+    temp_dir, logger, mirs_am1_cgas_v4_subsetted_variable
+):
+    """Verify a MISR_AM1_CGAS all variable generate COG for 2D and 3D variables.
+
+    """
+    test_file = pathlib.Path(temp_dir, mirs_am1_cgas_v4_subsetted_variable)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        [],
+        logger,
+    )
+
+    # Check results are as expected:
+    assert len(results) == 20, "Incorrect number of output file names."
+
+    for entry in results:
+        if pathlib.Path(entry).is_file():
+            assert cog_validate(pathlib.Path(entry))
+
+
+def test_process_missing_spatial_dimension_error_catch_exception(
+    temp_dir, logger, mirs_am1_cgas_v4_subsetted_variable
+):
+    """Verify a MISR_AM1_CGAS variable with 4D throws exception"""
+    test_file = pathlib.Path(temp_dir, mirs_am1_cgas_v4_subsetted_variable)
+    expected_exception = (
+        "Variable Aerosol_Parameter_Average/Spectral_AOD_Scaling_Coefficient"
+        " cannot be converted to tif: Only 2D and 3D data arrays supported."
+        " ('Latitude', 'Longitude', 'Optical_Depth_Range', 'Coefficient')"
+    )
+
+    input_datatree = xr.open_datatree(
+        test_file,
+        decode_coords=True,
+        decode_times=xr.coders.CFDatetimeCoder(use_cftime=True),
+        decode_timedelta=True,
+    )
+
+    with pytest.raises(Net2CogError, match=re.escape(expected_exception)):
+        process_missing_spatial_dimension_error_exception(
+            input_datatree,
+            "Aerosol_Parameter_Average/Spectral_AOD_Scaling_Coefficient",
+            logger,
+            test_file,
+        )
+
