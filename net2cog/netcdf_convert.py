@@ -35,7 +35,8 @@ from net2cog.utilities import (
     is_valid_shape,
     is_valid_dtype,
     is_valid_spatial_dimensions,
-    get_value_error_handler
+    get_value_error_handler,
+    construct_variable_path
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -193,12 +194,7 @@ def get_all_data_variables(
         if node.has_data and node.data_vars:
             for var_name in node.data_vars:
                 var_name_str = str(var_name)
-
-                # Construct variable path from node path
-                if node.path == '/':
-                    var_path = '/' + var_name_str
-                else:
-                    var_path = f"{node.path}/{var_name_str}"
+                var_path = construct_variable_path(node.path, var_name_str)
 
                 # Filter variables based on shape, dtype, and spatial dimensions
                 if (

@@ -87,21 +87,21 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArr
     if len(z_dim) == 0:
         # Reorder 2 Dimension
         return variable.transpose(y_dim[0], x_dim[0])
-    else:
-        # Reorder 3rd Dimension
-        if not z_dim or not z_dim[0]:
-            raise Net2CogError(
-                variable_path,
-                f"{z_dim} dimensions not found in {variable.dims}",
-            )
-        return variable.transpose(z_dim[0], y_dim[0], x_dim[0])
+
+    # Reorder 3rd Dimension
+    if not z_dim or not z_dim[0]:
+        raise Net2CogError(
+            variable_path,
+            f"{z_dim} dimensions not found in {variable.dims}",
+        )
+    return variable.transpose(z_dim[0], y_dim[0], x_dim[0])
 
 
 def rename_dimensions(variable: xr.DataArray) -> xr.DataArray:
     """This function renames coordinates to standard 'x' and 'y' required by
     rasterio, returning only the renamed variable as a DataArray.
     Originally the input and output were DataTree, but now both are DataArray as
-    a memory optimization. The context where this is called is after 
+    a memory optimization. The context where this is called is after
     reorder_dimension.
 
     Parameters
@@ -123,6 +123,27 @@ def rename_dimensions(variable: xr.DataArray) -> xr.DataArray:
     return variable.rename({y_dim[0]: 'y', x_dim[0]: 'x'})
 
 
+def construct_variable_path(node_path: str, var_name: str) -> str:
+    """Construct variable path from node path and variable name.
+
+    Parameters
+    ----------
+    node_path : str
+        Path of the node in the DataTree
+    var_name : str
+        Name of the variable
+
+    Returns
+    -------
+    str
+        Full variable path
+
+    """
+    if node_path == '/':
+        return '/' + var_name
+    return f"{node_path}/{var_name}"
+
+
 def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
     """Traverse tree and verify variables path in DataTree.
 
@@ -140,16 +161,12 @@ def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
         False if variables not in DataTree
 
     """
-    # Use subtree iterator instead of to_dict() to avoid materializing entire tree
+    # Use subtree iterator instead to avoid materializing entire tree
     for node in nc_xarray.subtree:
         if node.has_data and node.data_vars:
             for var_name in node.data_vars:
                 var_name_str = str(var_name)
-                # Construct variable path from node path
-                if node.path == '/':
-                    var_path = '/' + var_name_str
-                else:
-                    var_path = f"{node.path}/{var_name_str}"
+                var_path = construct_variable_path(node.path, var_name_str)
 
                 if var_path == variable_path:
                     return True
@@ -476,7 +493,7 @@ def apply_fillvalue_to_missing_value(
 
     # Extract the variable and copy only its values
     variable = nc_xarray[variable_path]
-    values_tmp = variable.values.copy() # type: ignore
+    values_tmp = variable.values.copy()
 
     # Replace all missing_value data with fill_value
     values_tmp[np.where(values_tmp == missing_value)] = fill_value
