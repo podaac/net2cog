@@ -45,9 +45,11 @@ class Net2CogError(Exception):
         )
 
 
-def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTree:
-    """This function reorders a 2D and 3D using DataTree.transpose() to
-    create the correct dimension order in a new DataTree.
+def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArray:
+    """This function reorders a 2D or 3D variable to create the correct
+    dimension order, returning only the reordered variable as a DataArray.
+    Originally this returned the whole DataTree, working with just the variable
+    is a memory optimization.
 
     Parameters
     ----------
@@ -58,81 +60,88 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTre
 
     Returns
     -------
-    xr.DataTree
-        New DataTree with proper order dimensions
+    xr.DataArray
+        New DataArray with proper dimension order
 
     """
-    # Find the union of X_COORDINATE/Y_COORDINATE to DataTree.dims
-    x_dim = list(set(X_COORDINATE) & set(nc_xarray[variable_path].dims))
-    y_dim = list(set(Y_COORDINATE) & set(nc_xarray[variable_path].dims))
+    variable = nc_xarray[variable_path]
+
+    # Find the union of X_COORDINATE/Y_COORDINATE to variable.dims
+    x_dim = list(set(X_COORDINATE) & set(variable.dims))
+    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
     if not x_dim or not y_dim:
         raise Net2CogError(
             variable_path,
             f"{X_COORDINATE} or {Y_COORDINATE} dimensions not found in "
-            f"DataTree.dims {nc_xarray[variable_path].dims}",
+            f"variable.dims {variable.dims}",
         )
 
-    z_dim = list(set(nc_xarray[variable_path].dims) - {x_dim[0], y_dim[0]})
+    z_dim = list(set(variable.dims) - {x_dim[0], y_dim[0]})
     if len(z_dim) > 1:
         # 4 Dimension and up not supported
         raise Net2CogError(
             variable_path,
-            f"Only 2D and 3D data arrays supported. {nc_xarray[variable_path].dims}",
+            f"Only 2D and 3D data arrays supported. {variable.dims}",
         )
-
-    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
-    nc_xarray_tmp = nc_xarray.copy()
 
     if len(z_dim) == 0:
         # Reorder 2 Dimension
-        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
-            y_dim[0], x_dim[0]
+        return variable.transpose(y_dim[0], x_dim[0])
+
+    # Reorder 3rd Dimension
+    if not z_dim or not z_dim[0]:
+        raise Net2CogError(
+            variable_path,
+            f"{z_dim} dimensions not found in {variable.dims}",
         )
-    else:
-        # Reorder 3rd Dimension
-        if not z_dim or not z_dim[0]:
-            raise Net2CogError(
-                variable_path,
-                f"{z_dim} dimensions not found in {nc_xarray[variable_path].dims}",
-            )
-
-        nc_xarray_tmp[variable_path] = nc_xarray[variable_path].transpose(
-            z_dim[0], y_dim[0], x_dim[0]
-        )
-
-    return nc_xarray_tmp
+    return variable.transpose(z_dim[0], y_dim[0], x_dim[0])
 
 
-def rename_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataTree:
-    """This function rename coordinates to standard 'x' and 'y'
-    required by rasterio
+def rename_dimensions(variable: xr.DataArray) -> xr.DataArray:
+    """This function renames coordinates to standard 'x' and 'y' required by
+    rasterio, returning only the renamed variable as a DataArray.
+    Originally the input and output were DataTree, but now both are DataArray as
+    a memory optimization. The context where this is called is after
+    reorder_dimension.
 
     Parameters
     ----------
-    nc_xarray : xarray.DataTree
-        DataTree object representing the root group of the NetCDF-4 file.
-    variable_path: str
-        Variable path is present in DataTree
+    variable : xarray.DataArray
+        DataArray object extracted from the original DataTree.
 
     Returns
     -------
-    xr.DataTree
-        New DataTree with proper order dimensions
+    xr.DataArray
+        New DataArray with renamed dimensions
 
     """
-    # DataTree nc_xarray is immutable so copy new DataTree to reorder dimensions
-    nc_xarray_tmp = nc_xarray.copy()
-
-    # Find the union of X_COORDINATE/Y_COORDINATE to DataTree.dims
-    x_dim = list(set(X_COORDINATE) & set(nc_xarray_tmp[variable_path].dims))
-    y_dim = list(set(Y_COORDINATE) & set(nc_xarray_tmp[variable_path].dims))
+    # Find the union of X_COORDINATE/Y_COORDINATE to variable.dims
+    x_dim = list(set(X_COORDINATE) & set(variable.dims))
+    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
 
     # Rename coordinates to standard 'x' and 'y' required by rasterio
-    nc_xarray_tmp[variable_path] = (
-        nc_xarray_tmp[variable_path].rename({y_dim[0]: 'y', x_dim[0]: 'x'})
-    )
+    return variable.rename({y_dim[0]: 'y', x_dim[0]: 'x'})
 
-    return nc_xarray_tmp
+
+def construct_variable_path(node_path: str, var_name: str) -> str:
+    """Construct variable path from node path and variable name.
+
+    Parameters
+    ----------
+    node_path : str
+        Path of the node in the DataTree
+    var_name : str
+        Name of the variable
+
+    Returns
+    -------
+    str
+        Full variable path
+
+    """
+    if node_path == '/':
+        return '/' + var_name
+    return f"{node_path}/{var_name}"
 
 
 def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
@@ -152,17 +161,17 @@ def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
         False if variables not in DataTree
 
     """
-    data_variables = []
-    for group_path, group in nc_xarray.to_dict().items():
-        data_variables.extend(
-            [
-                "/".join([group_path.rstrip("/"), str(data_var)])
-                for data_var in group.data_vars
-            ]
-        )
+    # issue/8: use subtree iterator instead of to_dict() to conserve memory
+    for node in nc_xarray.subtree:
+        if not (node.has_data and node.data_vars):
+            continue
 
-        if variable_path in data_variables:
-            return True
+        for var_name in node.data_vars:
+            var_name_str = str(var_name)
+            var_path = construct_variable_path(node.path, var_name_str)
+
+            if var_path == variable_path:
+                return True
 
     return False
 
@@ -456,7 +465,7 @@ def get_value_error_handler(
 
 def apply_fillvalue_to_missing_value(
         nc_xarray: xr.DataTree, variable_path: str
-) -> xr.DataTree:
+) -> xr.DataArray:
     """This function replaces occurrences of missing_value in the variable's
     data array with _FillValue. It also removes the missing_value attribute
     and adds a new process_note attribute to document the transformation
@@ -471,9 +480,9 @@ def apply_fillvalue_to_missing_value(
 
     Returns
     -------
-    xr.DataTree
-        New DataTree with missing_value data replace with _FillValue data,
-        missing_value attribute delete, and new process_note attribute
+    xr.DataArray
+        New DataArray with missing_value data replaced with _FillValue data,
+        missing_value attribute deleted, and new process_note attribute
         to explain the process.
 
     """
@@ -484,22 +493,28 @@ def apply_fillvalue_to_missing_value(
     if fill_value is None or missing_value is None:
         raise ValueError("Missing _FillValue or missing_value attribute.")
 
-    # DataTree nc_xarray is immutable so copy new DataTree
-    # to change missing_value data
-    nc_xarray_tmp = nc_xarray.copy()
-    values_tmp = nc_xarray_tmp[variable_path].values.copy()
+    # Extract the variable and copy only its values
+    variable = nc_xarray[variable_path]
+    values_tmp = variable.values.copy()
 
     # Replace all missing_value data with fill_value
     values_tmp[np.where(values_tmp == missing_value)] = fill_value
 
-    # Assign updated values back to the DataTree
-    nc_xarray_tmp[variable_path].values = values_tmp
+    # Create new DataArray with modified values using xarray constructor
+    variable_modified = xr.DataArray(
+        values_tmp,
+        dims=variable.dims,
+        coords=variable.coords,
+        attrs=variable.attrs.copy(),
+        name=variable.name
+    )
 
-    # Delete missing_value
-    if 'missing_value' in nc_xarray_tmp[variable_path].encoding:
-        del nc_xarray_tmp[variable_path].encoding['missing_value']
-    if 'missing_value' in nc_xarray_tmp[variable_path].attrs:
-        del nc_xarray_tmp[variable_path].attrs['missing_value']
+    # Copy encoding but remove missing_value
+    variable_modified.encoding.update(variable.encoding)
+    if 'missing_value' in variable_modified.encoding:
+        del variable_modified.encoding['missing_value']
+    if 'missing_value' in variable_modified.attrs:
+        del variable_modified.attrs['missing_value']
 
     # Add process_note attribute that explains this processing
     process_note = (f"_FillValue = {fill_value} represents all missing "
@@ -507,9 +522,9 @@ def apply_fillvalue_to_missing_value(
                     f"and other missing observations originally marked "
                     f"as {missing_value}")
 
-    nc_xarray_tmp[variable_path].attrs["process_note"] = process_note
+    variable_modified.attrs["process_note"] = process_note
 
-    return nc_xarray_tmp
+    return variable_modified
 
 
 def get_fillvalue_and_missing_value(

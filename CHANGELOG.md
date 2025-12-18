@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 ### Removed
 ### Fixed
+- [issues/8](https://github.com/podaac/net2cog/issues/8): Reduced peak memory usage of net2cog service, particularly on large granules, by ~60%, enabling high resolution collections to be processed on container images with 8GB RAM.
 ### Security
 
 ## [1.0.0]

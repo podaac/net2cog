@@ -31,11 +31,12 @@ from net2cog.utilities import (
     resolve_relative_path,
     Net2CogError,
     reorder_dimensions,
+    rename_dimensions,
     is_valid_shape,
     is_valid_dtype,
     is_valid_spatial_dimensions,
     get_value_error_handler,
-    rename_dimensions,
+    construct_variable_path
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -116,7 +117,7 @@ def _write_cogtiff(
         except (LookupError, TypeError) as err:
             logger.info("Variable %s cannot be converted to tif: %s",
                         variable_path, err)
-            raise Net2CogError(variable_path, err) from err
+            raise Net2CogError(variable_path, str(err)) from err
         except ValueError as error:
             process_value_error_exception(nc_xarray,
                                           variable_path,
@@ -188,21 +189,24 @@ def get_all_data_variables(
 
     """
     data_variables = []
-    for group_path, group in root_datatree.to_dict().items():
-        data_variables.extend([
-            '/'.join([group_path.rstrip('/'), str(data_var)])
-            for data_var in group.data_vars
-        ])
+    # issue/8: use subtree iterator instead of to_dict() to conserve memory
+    for node in root_datatree.subtree:
+        if not (node.has_data and node.data_vars):
+            continue
 
-    return [
-        data_variable
-        for data_variable in data_variables
-        if is_valid_shape(root_datatree[data_variable], data_variable, logger)
-        and is_valid_dtype(root_datatree[data_variable], data_variable, logger)
-        and is_valid_spatial_dimensions(
-            root_datatree[data_variable], data_variable, logger
-        )
-    ]
+        for var_name in node.data_vars:
+            var_name_str = str(var_name)
+            var_path = construct_variable_path(node.path, var_name_str)
+
+            # Filter variables based on shape, dtype, and spatial dimensions
+            if (
+                is_valid_shape(node[var_name_str], var_path, logger) and
+                is_valid_dtype(node[var_name_str], var_path, logger) and
+                is_valid_spatial_dimensions(node[var_name_str], var_path, logger)
+            ):
+                data_variables.append(var_path)
+
+    return data_variables
 
 
 def get_crs_from_grid_mapping(
@@ -288,14 +292,16 @@ def process_value_error_exception(
             str(error_message)
         )
         logger.info("Calling %s() method...", value_error_handler)
-        nc_xarray_tmp = value_error_handler(nc_xarray, variable_path)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+        # net2cog issue #8: since we work with DataArray instead of DataTree
+        # the error handler has been updated accordingly
+        variable_data = value_error_handler(nc_xarray, variable_path)
+        variable_data.rio.to_raster(temp_file_name)
     except ValueError as valerr:
         raise ValueError(valerr) from valerr
     except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
                     variable_path, err)
-        raise Net2CogError(variable_path, err) from err
+        raise Net2CogError(variable_path, str(err)) from err
 
 
 def process_invalid_dimension_order_exception(
@@ -323,12 +329,13 @@ def process_invalid_dimension_order_exception(
 
     """
     try:
-        nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+        # reorder_dimensions now returns DataArray directly
+        variable_data = reorder_dimensions(nc_xarray, variable_path)
+        variable_data.rio.to_raster(temp_file_name)
     except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
                     variable_path, err)
-        raise Net2CogError(variable_path, err) from err
+        raise Net2CogError(variable_path, str(err)) from err
 
 
 def process_dimension_error_exception(
@@ -366,7 +373,7 @@ def process_dimension_error_exception(
     except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
                     variable_path, err)
-        raise Net2CogError(variable_path, err) from err
+        raise Net2CogError(variable_path, str(err)) from err
 
 
 def process_missing_spatial_dimension_error_exception(
@@ -399,13 +406,14 @@ def process_missing_spatial_dimension_error_exception(
 
     """
     try:
-        nc_xarray_tmp = reorder_dimensions(nc_xarray, variable_path)
-        nc_xarray_tmp = rename_dimensions(nc_xarray_tmp, variable_path)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+        # Both functions now return DataArray directly
+        variable_data = reorder_dimensions(nc_xarray, variable_path)
+        variable_data = rename_dimensions(variable_data)
+        variable_data.rio.to_raster(temp_file_name)
     except Exception as err:    # pylint: disable=broad-except
         logger.info("Variable %s cannot be converted to tif: %s",
                     variable_path, err)
-        raise Net2CogError(variable_path, err) from err
+        raise Net2CogError(variable_path, str(err)) from err
 
 
 def netcdf_converter(
@@ -447,6 +455,7 @@ def netcdf_converter(
 
         input_datatree = xr.open_datatree(
             netcdf_file,
+            chunks='auto',
             decode_coords=False,
             decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
             decode_timedelta=False,
@@ -459,7 +468,7 @@ def netcdf_converter(
             var_list = get_all_data_variables(input_datatree, logger)
 
         raw_output_files = [
-            _write_cogtiff(output_directory, input_datatree, variable_name, logger)
+            _write_cogtiff(str(output_directory), input_datatree, variable_name, logger)
             for variable_name in var_list
         ]
         # Remove None returns, e.g., for excluded variables

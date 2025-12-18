@@ -7,7 +7,6 @@ Test the netcdf conversion functionality.
 """
 import re
 import pathlib
-import subprocess
 from os.path import basename, splitext
 from rio_cogeo.cogeo import cog_validate, cog_info
 
@@ -332,7 +331,8 @@ def test_spl3smp_all_variable_3d_annotated(
                 != "Soil_Moisture_Retrieval_Data_AM_tb_time_utc_pm.tif"
             )
             assert cog_info(pathlib.Path(entry)).GEO.CRS == "EPSG:6933"
-            assert cog_validate(pathlib.Path(entry))
+            is_valid, errs, _ = cog_validate(pathlib.Path(entry))
+            assert is_valid, errs
 
 
 def test_spl3smp_dtype_string_handle_exception(
@@ -451,8 +451,8 @@ def test_process_value_error_exception_catch_exception(
 
     """
     test_file = pathlib.Path(temp_dir, 'output.tif')
-    value_error_message = f"Variable None has conflicting _FillValue (255) " \
-                          f"and missing_value (200). Cannot encode data."
+    value_error_message = "Variable None has conflicting _FillValue (255) " \
+                          "and missing_value (200). Cannot encode data."
 
     expected_exception = (
         "Variable group_five/variable_two cannot be converted to tif: "
@@ -466,7 +466,7 @@ def test_process_value_error_exception_catch_exception(
             "group_five/variable_two",
             value_error_message,
             logger,
-            test_file,
+            str(test_file),
         )
 
 @pytest.mark.parametrize(
@@ -494,7 +494,7 @@ def test_process_invalid_dimension_order_exception(
             input_datatree_reorder_3d,
             variable_path,
             logger,
-            test_file,
+            str(test_file),
         )
 
 def test_process_dimension_error_exception_catch_exception(
@@ -519,7 +519,7 @@ def test_process_dimension_error_exception_catch_exception(
             input_datatree,
             "group_five/variable_two",
             logger,
-            test_file,
+            str(test_file),
         )
 
 
@@ -569,7 +569,8 @@ def test_mirs_am1_cgas_v4_all_variable(
 
     for entry in results:
         if pathlib.Path(entry).is_file():
-            assert cog_validate(pathlib.Path(entry))
+            is_valid, errs, _ = cog_validate(pathlib.Path(entry))
+            assert is_valid, errs
 
 
 def test_process_missing_spatial_dimension_error_catch_exception(
@@ -595,6 +596,6 @@ def test_process_missing_spatial_dimension_error_catch_exception(
             input_datatree,
             "Aerosol_Parameter_Average/Spectral_AOD_Scaling_Coefficient",
             logger,
-            test_file,
+            str(test_file),
         )
 

@@ -20,3 +20,4 @@ coverage.xml
 .coverage
 .coverage.*
 .cache
+.vscode/

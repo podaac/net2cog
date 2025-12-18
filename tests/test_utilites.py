@@ -6,7 +6,6 @@ test_utilities.py
 Test the net2cog utilites functionality.
 """
 
-import re
 import pytest
 import numpy as np
 import xarray as xr
@@ -252,9 +251,9 @@ def test_reorder_2d_lon_lat(input_datatree_reorder_2d_lon_lat):
     expected_path = ("lat", "lon")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_lon_lat, variable_path)
+    variable_data = reorder_dimensions(input_datatree_reorder_2d_lon_lat, variable_path)
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latitude):
@@ -274,11 +273,11 @@ def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latit
     expected_path = ("latitude", "longitude")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
+    variable_data = reorder_dimensions(
         input_datatree_reorder_2d_longitude_latitude, variable_path
     )
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
@@ -299,9 +298,9 @@ def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
     expected_path = ("y", "x")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_x_y, variable_path)
+    variable_data = reorder_dimensions(input_datatree_reorder_2d_x_y, variable_path)
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
@@ -322,11 +321,11 @@ def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
     expected_path = ("y-dim", "x-dim")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
+    variable_data = reorder_dimensions(
         input_datatree_reorder_2d_x_dim_y_dim, variable_path
     )
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_XDim_YDim(input_datatree_2d_XDim_YDim):
@@ -347,11 +346,11 @@ def test_reorder_2d_XDim_YDim(input_datatree_2d_XDim_YDim):
     expected_path = ("YDim", "XDim")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
+    variable_data = reorder_dimensions(
         input_datatree_2d_XDim_YDim, variable_path
     )
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_3d_dimensions(input_datatree_reorder_3d):
@@ -408,9 +407,9 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
 
     for description, variable_path, expected_path in test_args:
         print(description)
-        nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_3d, variable_path)
+        variable_data = reorder_dimensions(input_datatree_reorder_3d, variable_path)
 
-        assert nc_xarray_tmp[variable_path].dims == expected_path
+        assert variable_data.dims == expected_path
 
 
 def test_reorder_3d_dimensions_exception(input_datatree_bad_3d_variables):
@@ -495,7 +494,7 @@ def test_is_valid_spatial_dimensions_incomplete(dimension, logger):
             },
         ),
     )
-    print(f'Test variable.dim returns False when only one spatial dimension present')
+    print('Test variable.dim returns False when only one spatial dimension present')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
 
 
@@ -509,7 +508,7 @@ def test_is_valid_spatial_dimensions_absent(logger):
             },
         ),
     )
-    print(f'For variables (time) that do not have spatial dimensions, test returns False')
+    print('For variables (time) that do not have spatial dimensions, test returns False')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
 
 
@@ -723,23 +722,23 @@ def test_apply_fillvalue_to_missing_value(input_datatree):
 
     """
     expected_process_note = (
-        f'_FillValue = -999 represents all missing data including fill values'
-        f' (orbit gaps, missing swaths) and other missing observations'
-        f' originally marked as 999'
+        '_FillValue = -999 represents all missing data including fill values'
+        ' (orbit gaps, missing swaths) and other missing observations'
+        ' originally marked as 999'
     )
 
-    nc_xarray_tmp = apply_fillvalue_to_missing_value(
+    variable_data = apply_fillvalue_to_missing_value(
         input_datatree,
         "group_six/variable_one"
     )
 
-    result = nc_xarray_tmp["group_six/variable_one"].values
+    result = variable_data.values
 
     assert (result == np.array([[1, -999], [-999, 4]])).all()
-    assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].encoding
-    assert "missing_value" not in nc_xarray_tmp["group_six/variable_one"].attrs
+    assert "missing_value" not in variable_data.encoding
+    assert "missing_value" not in variable_data.attrs
 
-    process_note = nc_xarray_tmp["group_six/variable_one"].attrs.get("process_note")
+    process_note = variable_data.attrs.get("process_note")
     assert process_note == expected_process_note
 
 def test_apply_fillvalue_to_missing_value_no_missing_value_exception(input_datatree):
@@ -801,6 +800,6 @@ def test_rename_3d_dimensions(input_datatree_reorder_3d):
 
     for description, variable_path, expected_path in test_args:
         print(description)
-        nc_xarray_tmp = rename_dimensions(input_datatree_reorder_3d, variable_path)
+        variable_data = rename_dimensions(input_datatree_reorder_3d[variable_path])
 
-        assert nc_xarray_tmp[variable_path].dims == expected_path
+        assert variable_data.dims == expected_path
