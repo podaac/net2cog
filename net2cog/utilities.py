@@ -161,15 +161,17 @@ def is_variable_in_datatree(nc_xarray: xr.DataTree, variable_path: str) -> bool:
         False if variables not in DataTree
 
     """
-    # Use subtree iterator instead to avoid materializing entire tree
+    # issue/8: use subtree iterator instead of to_dict() to conserve memory
     for node in nc_xarray.subtree:
-        if node.has_data and node.data_vars:
-            for var_name in node.data_vars:
-                var_name_str = str(var_name)
-                var_path = construct_variable_path(node.path, var_name_str)
+        if not (node.has_data and node.data_vars):
+            continue
 
-                if var_path == variable_path:
-                    return True
+        for var_name in node.data_vars:
+            var_name_str = str(var_name)
+            var_path = construct_variable_path(node.path, var_name_str)
+
+            if var_path == variable_path:
+                return True
 
     return False
 

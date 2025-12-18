@@ -189,20 +189,22 @@ def get_all_data_variables(
 
     """
     data_variables = []
-    # Use subtree iterator instead of to_dict() to conserve memory
+    # issue/8: use subtree iterator instead of to_dict() to conserve memory
     for node in root_datatree.subtree:
-        if node.has_data and node.data_vars:
-            for var_name in node.data_vars:
-                var_name_str = str(var_name)
-                var_path = construct_variable_path(node.path, var_name_str)
+        if not (node.has_data and node.data_vars):
+            continue
 
-                # Filter variables based on shape, dtype, and spatial dimensions
-                if (
-                    is_valid_shape(node[var_name_str], var_path, logger) and
-                    is_valid_dtype(node[var_name_str], var_path, logger) and
-                    is_valid_spatial_dimensions(node[var_name_str], var_path, logger)
-                ):
-                    data_variables.append(var_path)
+        for var_name in node.data_vars:
+            var_name_str = str(var_name)
+            var_path = construct_variable_path(node.path, var_name_str)
+
+            # Filter variables based on shape, dtype, and spatial dimensions
+            if (
+                is_valid_shape(node[var_name_str], var_path, logger) and
+                is_valid_dtype(node[var_name_str], var_path, logger) and
+                is_valid_spatial_dimensions(node[var_name_str], var_path, logger)
+            ):
+                data_variables.append(var_path)
 
     return data_variables
 
