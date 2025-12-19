@@ -26,8 +26,6 @@ DTYPE_SUPPORTED = [
 DIM_STANDARD_NAME_AND_UNITS = {
     'projection_x_coordinate': ['m', 'meters', 'meter'],
     'projection_y_coordinate': ['m', 'meters', 'meter'],
-    'projection_x_angular_coordinate': ['m', 'meters', 'meter'],
-    'projection_y_angular_coordinate': ['m', 'meters', 'meter'],
     'latitude': ['degrees_north', 'degree_north', 'degree_N', 'degreeN', 'degreesN'],
     'longitude': ['degrees_east', 'degree_east', 'degree_E', 'degrees_E', 'degreeE', 'degreesE'],
 }
