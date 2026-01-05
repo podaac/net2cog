@@ -15,7 +15,7 @@ from net2cog.utilities import (
     is_variable_in_datatree,
     reorder_dimensions,
     is_valid_spatial_dimensions,
-    is_valid_spatial_dimensions_with_standard_name_units,
+    get_dim_names_from_cf_standard_name_units,
     get_value_error_handler,
     apply_fillvalue_to_missing_value,
     get_fillvalue_and_missing_value,
@@ -586,86 +586,88 @@ def test_is_valid_spatial_dimensions_with_invalid_dim_names_with_valid_standard_
     assert is_valid_spatial_dimensions(variable, "science", logger)
 
 
-def test_is_valid_spatial_dimensions_with_standard_name_units_success_lat_lon(logger):
-    """Verify returns True, when spatial dimensions has correct standard_name and units."""
+def test_get_dim_names_from_cf_standard_name_units_success_lat_lon():
+    """Verify returns dimension name "lat" and "lon" when spatial
+    dimensions has correct standard_name and units.
+    
+    """
     coords = {
         "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
         "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
     }
     variable = xr.DataArray([1], coords=coords)
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "lon" and y_dim ==  "lat"
 
 
-def test_is_valid_spatial_dimensions_with_standard_name_units_success_xdim_ydim(logger):
-    """Verify returns True, when spatial dimensions has correct standard_name and units."""
+def test_get_dim_names_from_cf_standard_name_units_success_xdim_ydim():
+    """Verify returns dimension name "XDim" and "YDim" when spatial
+    dimensions has correct standard_name and units.
+    
+    """
     coords = {
         "XDim": xr.DataArray([0], attrs={"standard_name": "projection_x_coordinate", "units": "m"}),
         "YDim": xr.DataArray([0], attrs={"standard_name": "projection_y_coordinate", "units": "m"})
     }
     variable = xr.DataArray([1], coords=coords)
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "XDim" and y_dim ==  "YDim"
 
 
-def test_invalid_spatial_dimensions_with_standard_name_units_success_time(logger):
-    """Verify returns False, when spatial dimensions has standard_name 'time' and units ' since '."""
+def test_uppercase_dimensions_name_with_standard_name_units():
+    """Verify returns dimension name "Latitude" and "Longitude" when spatial
+    dimensions also has standard_name 'time' and units ' since '.
+    
+    """
     coords = {
-        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
-        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"}),
+        "Latitude": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "Longitude": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"}),
         "time": xr.DataArray([0], attrs={"standard_name": "time", "units": "hours since 2001-01-01 00:00:00.0"})
     }
     variable = xr.DataArray([1], coords=coords)
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "Longitude" and y_dim ==  "Latitude"
 
 
-def test_missing_standard_name(logger):
-    """Verify returns False, when spatial dimensions does not have standard_name."""
+def test_missing_standard_name():
+    """Verify returns dimension name "abc" and "def" when spatial
+    dimensions does not have standard_name and valid units.
+    
+    """
     coords = {
-        "lat": xr.DataArray([0], attrs={"units": "degrees_north"}),
-        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+        "abc": xr.DataArray([0], attrs={"units": "degrees_north"}),
+        "def": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
     }
     variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "def" and y_dim ==  "abc"
 
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
 
-
-def test_missing_units(logger):
-    """Verify returns False, when spatial dimensions does not have standard_name."""
+def test_missing_units():
+    """Verify returns dimension name uppercase and cat "Lat" and "Lon"
+    when spatial dimensions does not have units."""
     coords = {
-        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
-        "lon": xr.DataArray([0], attrs={"standard_name": "longitude"})
+        "Lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "Lon": xr.DataArray([0], attrs={"standard_name": "longitude"})
     }
     variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "Lon" and y_dim ==  "Lat"
 
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
-
-
-def test_invalid_standard_name(logger):
+def test_invalid_standard_name_and_units(logger):
     """Verify returns False, when spatial dimensions have invalid units."""
     coords = {
-        "lat": xr.DataArray([0], attrs={"standard_name": "lat", "units": "degrees_north"}),
-        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+        "lat": xr.DataArray([0], attrs={"standard_name": "lat", "units": "degrees_nor"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "lon", "units": "degrees_ea"})
     }
     variable = xr.DataArray([1], coords=coords)
-
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
-
-
-def test_invalid_units(logger):
-    """Verify returns False, when spatial dimensions have invalid units."""
-    coords = {
-        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "radians"}),
-        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
-    }
-    variable = xr.DataArray([1], coords=coords)
-
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
-
+    assert get_dim_names_from_cf_standard_name_units(variable) == (None, None)
 
 def test_empty_coords(logger):
     """Verify returns False, when spatial dimensions have empty coordinates."""
     variable = xr.DataArray([1])
 
-    assert is_valid_spatial_dimensions_with_standard_name_units(variable, "science", logger) is False
+    assert get_dim_names_from_cf_standard_name_units(variable) == (None, None)
 
 @pytest.mark.parametrize(
     "value_error_message, expected_handler",

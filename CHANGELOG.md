@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- [issues/59](https://github.com/podaac/net2cog/issues/59): Update code to support MIL3AEN.004 data due to 3D data with non-spatial dimension last (Latitude, Longitude, Optical_Depth_Range)  
+- [issues/59](https://github.com/podaac/net2cog/issues/59): Update code to support MIL3AEN.004 data due to 3D data with non-spatial dimension last (Latitude, Longitude, Optical_Depth_Range). Add method to retrieve dimensions name from CF-compliant standard_name/units.
 - [issues/58](https://github.com/podaac/net2cog/issues/58): Update code to support MODIS V7 MOD10A1 data due to the presence of both "_FillValue" and "missing_value" attributes.  
 - [issues/61](https://github.com/podaac/net2cog/issues/61): Updated the code to prevent failures when processing SMAP L3 timestamp/timedelta variables by explicitly disabling xarray's default decoding via xr.open_datatree(decode_timedelta=False).  Create a script to build and run pytest unit tests and inside Docker containers.
 - [issues/57](https://github.com/podaac/net2cog/issues/54): Update code to support MODIS V7 variable dimension `XDim` and `YDim`.  Also add secondary check for CF-compliant standard_name and units if dimension name does not match.

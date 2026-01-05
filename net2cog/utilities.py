@@ -11,8 +11,8 @@ from collections.abc import Callable
 import xarray as xr
 import numpy as np
 
-X_COORDINATE = ("lon", "longitude", "Longitude", "x", "x-dim", "XDim")
-Y_COORDINATE = ("lat", "latitude", "Latitude", "y", "y-dim", "YDim")
+X_COORDINATE = ("lon", "longitude", "x", "x-dim", "XDim")
+Y_COORDINATE = ("lat", "latitude", "y", "y-dim", "YDim")
 DTYPE_SUPPORTED = [
     'ubyte',
     'uint8',
@@ -26,10 +26,12 @@ DTYPE_SUPPORTED = [
 DIM_STANDARD_NAME_AND_UNITS = {
     'projection_x_coordinate': ['m', 'meters', 'meter'],
     'projection_y_coordinate': ['m', 'meters', 'meter'],
-    'projection_x_angular_coordinate': ['m', 'meters', 'meter'],
-    'projection_y_angular_coordinate': ['m', 'meters', 'meter'],
     'latitude': ['degrees_north', 'degree_north', 'degree_N', 'degreeN', 'degreesN'],
     'longitude': ['degrees_east', 'degree_east', 'degree_E', 'degrees_E', 'degreeE', 'degreesE'],
+}
+DIM_STANDARD_NAME = {
+    'x': ['projection_x_coordinate', 'projection_x_angular_coordinate', 'longitude'],
+    'y': ['projection_y_coordinate', 'projection_y_angular_coordinate', 'latitude'],
 }
 
 
@@ -66,9 +68,14 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArr
     """
     variable = nc_xarray[variable_path]
 
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+
+    if not x_dim and not y_dim:
+        # Fallback: check against known coordinate sets
+        x_dim = ",".join(set(X_COORDINATE) & set(variable.dims))
+        y_dim = ",".join(set(Y_COORDINATE) & set(variable.dims))
+
     # Find the union of X_COORDINATE/Y_COORDINATE to variable.dims
-    x_dim = list(set(X_COORDINATE) & set(variable.dims))
-    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
     if not x_dim or not y_dim:
         raise Net2CogError(
             variable_path,
@@ -76,7 +83,8 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArr
             f"variable.dims {variable.dims}",
         )
 
-    z_dim = list(set(variable.dims) - {x_dim[0], y_dim[0]})
+    # Subtract sets to isolate and retrieve the 3rd or 4th dimensions
+    z_dim = list(set(variable.dims) - {x_dim, y_dim})
     if len(z_dim) > 1:
         # 4 Dimension and up not supported
         raise Net2CogError(
@@ -86,15 +94,16 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArr
 
     if len(z_dim) == 0:
         # Reorder 2 Dimension
-        return variable.transpose(y_dim[0], x_dim[0])
+        return variable.transpose(y_dim, x_dim)
 
-    # Reorder 3rd Dimension
     if not z_dim or not z_dim[0]:
         raise Net2CogError(
             variable_path,
             f"{z_dim} dimensions not found in {variable.dims}",
         )
-    return variable.transpose(z_dim[0], y_dim[0], x_dim[0])
+
+    # Reorder 3rd Dimension
+    return variable.transpose(z_dim[0], y_dim, x_dim)
 
 
 def rename_dimensions(variable: xr.DataArray) -> xr.DataArray:
@@ -115,12 +124,17 @@ def rename_dimensions(variable: xr.DataArray) -> xr.DataArray:
         New DataArray with renamed dimensions
 
     """
-    # Find the union of X_COORDINATE/Y_COORDINATE to variable.dims
-    x_dim = list(set(X_COORDINATE) & set(variable.dims))
-    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+
+    if x_dim and y_dim:
+        return variable.rename({y_dim: 'y', x_dim: 'x'})
+
+    # Fallback: check against known coordinate sets
+    x_dim = ",".join(set(X_COORDINATE) & set(variable.dims))
+    y_dim = ",".join(set(Y_COORDINATE) & set(variable.dims))
 
     # Rename coordinates to standard 'x' and 'y' required by rasterio
-    return variable.rename({y_dim[0]: 'y', x_dim[0]: 'x'})
+    return variable.rename({y_dim: 'y', x_dim: 'x'})
 
 
 def construct_variable_path(node_path: str, var_name: str) -> str:
@@ -324,7 +338,8 @@ def is_valid_spatial_dimensions(
     variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
 ) -> bool:
     """Ensure variable has required spatial dimensions.
-    Convert the string to lowercase before performing the comparison
+    First attempt to check via CF-compliant standard_name/units
+    Fallback is to check against known coordinate sets
 
     Parameters
     ----------
@@ -338,92 +353,68 @@ def is_valid_spatial_dimensions(
     Returns
     -------
     bool
-        Value denoting if the variable has dimensions including one of the
-        following sets of spatial dimension names:
-
-            * {"lon", "lat"}
-            * {"longitude", "latitude"}
-            * {"Longitude", "Latitude"}
-            * {"x", "y"}
-            * {"x-dim", "y-dim"}
-            * {"XDim", "YDim"}  (Convert to lowercase before compare)
+        True if the variable has valid spatial dimensions
+        False otherwise.
 
     """
-    x_dim = list(set(X_COORDINATE) & set(variable.dims))
-    y_dim = list(set(Y_COORDINATE) & set(variable.dims))
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+
     if x_dim and y_dim:
         return True
 
-    # Fallback: check CF-compliant standard_name and units
-    if not is_valid_spatial_dimensions_with_standard_name_units(
-        variable,
+    # Fallback: check against known coordinate sets
+    x_dim = ",".join(set(X_COORDINATE) & set(variable.dims))
+    y_dim = ",".join(set(Y_COORDINATE) & set(variable.dims))
+
+    if x_dim and y_dim:
+        return True
+
+    logger.info(
+        "Unable to identify spatial dimensions from [%s] for variable: %s.\
+        Skipping COG generation for this variable",
+        variable.dims,
         variable_path,
-        logger
-    ):
-        logger.info(
-            "Unable to identify spatial dimensions from [%s] for variable: %s.\
-            Skipping COG generation for this variable",
-            variable.dims,
-            variable_path,
-        )
+    )
 
-        return False
-
-    return True
+    return False
 
 
-def is_valid_spatial_dimensions_with_standard_name_units(
-    variable: xr.DataArray | xr.DataTree, variable_path: str, logger: Logger
-) -> bool:
-    """Ensure spatial dimensions have valid CF-compliant standard_name and units.
+def get_dim_names_from_cf_standard_name_units(
+    variable: xr.DataArray | xr.DataTree
+) -> tuple[str | None, str | None]:
+    """Get dimensions name from CF-compliant standard_name/units.
 
     Parameters
     ----------
     variable : xarray.DataArray | xarray.DataTree
         A variable within the NetCDF-4 file, as represented in xarray.
-    variable_path: str
-        Full of the variable within the file to convert.
-    logger : logging.Logger
-        Python Logger object for emitting log messages.
 
     Returns
     -------
-    bool
-        True: True if all coordinate dimensions have valid standard_name and units.
-        False: otherwise.
+    tuple: x_dim_name | None, y_dim_name | None
 
     """
-    if not variable.coords:
-        return False
+    x_dim_name, y_dim_name = None, None
 
     for coord_name, coord in variable.coords.items():
         standard_name = coord.attrs.get('standard_name')
         units = coord.attrs.get('units')
 
-        if standard_name is None or units is None:
-            return False
+        # Check for Y (Latitude or Y Projection)
+        if not y_dim_name:
+            if units in DIM_STANDARD_NAME_AND_UNITS.get('latitude', set()):
+                y_dim_name = coord_name
+            elif standard_name in DIM_STANDARD_NAME['y']:
+                y_dim_name = coord_name
 
-        if standard_name not in DIM_STANDARD_NAME_AND_UNITS:
-            logger.info(
-                "The standard_name [%s] for coordinate [%s] in variable: %s \
-                do not comply with the CF (Climate and Forecast) conventions",
-                standard_name,
-                coord_name,
-                variable_path,
-            )
-            return False
+        # Check for X (Longitude or X Projection)
+        if not x_dim_name:
+            if units in DIM_STANDARD_NAME_AND_UNITS.get('longitude', set()):
+                x_dim_name = coord_name
+            elif standard_name in DIM_STANDARD_NAME['x']:
+                x_dim_name = coord_name
 
-        if units not in DIM_STANDARD_NAME_AND_UNITS.get(standard_name, set()):
-            logger.info(
-                "The units [%s] for coordinate [%s] in variable: %s \
-                do not comply with the CF (Climate and Forecast) conventions",
-                units,
-                coord_name,
-                variable_path,
-            )
-            return False
-
-    return True
+    return x_dim_name, y_dim_name
 
 
 def get_value_error_handler(
