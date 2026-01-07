@@ -1,0 +1,36 @@
+#!/bin/bash
+###############################################################################
+# Execute the sds/trajectory-subsetter-test Docker image as a container. This
+# will run the unit test suite, check for Python linting errors, and ensure
+# there are no known security vulnerabilities in imported third party packages.
+#
+# Note: This test suite only covers the Python code for this service, which is
+# the Harmony Python infrastructure that calls the compiled Trajectory
+# Subsetter binary. There is currently no unit testing of the binary or style
+# checking for the C++ source code.
+#
+# This script will output test coverage information to a `coverage` directory
+# and JUnit test report output to a `test-reports` directory on the host
+# machine executing this script.
+#
+###############################################################################
+
+set -ex
+
+tag=${1:-SIT}
+
+# Remove cached bytecode Python files, to ensure latest code is used
+find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+
+# Make the directory into which XML format test reports will be saved
+mkdir -p test-reports
+
+# Make the directory into which coverage reports will be saved
+mkdir -p coverage
+
+# Run the tests in a Docker container with mounted volumes for XML report
+# output and test coverage reporting
+docker run --rm \
+	-v $(pwd)/test-reports:/home/tests/reports \
+	-v $(pwd)/coverage:/home/tests/coverage \
+	ghcr.io/podaac/net2cog-test:${tag} "$@"

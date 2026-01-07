@@ -1,0 +1,17 @@
+#!/bin/bash
+
+image="ghcr.io/podaac/net2cog-test"
+tag=${1:-SIT}
+
+# Look for old version of image and remove
+old=$(docker images | grep "$image" | grep "latest" | awk '{print $3}')
+if [ ! -z "$old" ] && [ "$2" != "--no-delete" ]; then
+    docker rmi "$old"
+fi
+
+# Build the image
+docker build \
+    --platform linux/amd64 \
+    --build-arg IMAGE_TAG=${tag} \
+    -t ${image}:${tag} \
+    -f docker/tests.Dockerfile .

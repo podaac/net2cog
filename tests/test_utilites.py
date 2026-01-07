@@ -15,6 +15,11 @@ from net2cog.utilities import (
     is_variable_in_datatree,
     reorder_dimensions,
     is_valid_spatial_dimensions,
+    get_dim_names_from_cf_standard_name_units,
+    get_value_error_handler,
+    apply_fillvalue_to_missing_value,
+    get_fillvalue_and_missing_value,
+    rename_dimensions,
 )
 
 
@@ -246,9 +251,9 @@ def test_reorder_2d_lon_lat(input_datatree_reorder_2d_lon_lat):
     expected_path = ("lat", "lon")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_lon_lat, variable_path)
+    variable_data = reorder_dimensions(input_datatree_reorder_2d_lon_lat, variable_path)
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latitude):
@@ -268,11 +273,11 @@ def test_reorder_2d_longitude_latitude(input_datatree_reorder_2d_longitude_latit
     expected_path = ("latitude", "longitude")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
+    variable_data = reorder_dimensions(
         input_datatree_reorder_2d_longitude_latitude, variable_path
     )
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
@@ -293,9 +298,9 @@ def test_reorder_2d_x_y(input_datatree_reorder_2d_x_y):
     expected_path = ("y", "x")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_2d_x_y, variable_path)
+    variable_data = reorder_dimensions(input_datatree_reorder_2d_x_y, variable_path)
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
@@ -316,11 +321,36 @@ def test_reorder_2d_x_dim_y_dim(input_datatree_reorder_2d_x_dim_y_dim):
     expected_path = ("y-dim", "x-dim")
 
     print(description)
-    nc_xarray_tmp = reorder_dimensions(
+    variable_data = reorder_dimensions(
         input_datatree_reorder_2d_x_dim_y_dim, variable_path
     )
 
-    assert nc_xarray_tmp[variable_path].dims == expected_path
+    assert variable_data.dims == expected_path
+
+
+def test_reorder_2d_XDim_YDim(input_datatree_2d_XDim_YDim):
+    """Ensure that a 2-dimensional XDim YDim array is reordered using
+    DataTree.transpose() to create the correct dimension
+    order in a new DataTree
+
+    Tree structure in input_datatree:
+
+    |- science_five(XDim, YDim)
+    |- XDim
+    |- YDim
+
+    """
+
+    description = "Test reordered (XDim, YDim) to (YDim, XDim)"
+    variable_path = "science_one"
+    expected_path = ("YDim", "XDim")
+
+    print(description)
+    variable_data = reorder_dimensions(
+        input_datatree_2d_XDim_YDim, variable_path
+    )
+
+    assert variable_data.dims == expected_path
 
 
 def test_reorder_3d_dimensions(input_datatree_reorder_3d):
@@ -342,6 +372,8 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
           | science_four(x-dim, y-dim, z-dim)
     |- group_four
        |- science_five(abc, def, ghi)
+    |- group_seven
+       |- science_eight(XDim, YDim, ZDim)
 
     """
 
@@ -366,54 +398,40 @@ def test_reorder_3d_dimensions(input_datatree_reorder_3d):
             "group_two/group_three/science_four",
             ("z-dim", "y-dim", "x-dim"),
         ],
+        [
+            "Test reordered (XDim, YDim, ZDim) to (ZDim, YDim, XDim)",
+            "group_four/science_five",
+            ("ZDim", "YDim", "XDim"),
+        ],
     ]
 
     for description, variable_path, expected_path in test_args:
         print(description)
-        nc_xarray_tmp = reorder_dimensions(input_datatree_reorder_3d, variable_path)
+        variable_data = reorder_dimensions(input_datatree_reorder_3d, variable_path)
 
-        assert nc_xarray_tmp[variable_path].dims == expected_path
+        assert variable_data.dims == expected_path
 
 
-def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
+def test_reorder_3d_dimensions_exception(input_datatree_bad_3d_variables):
     """Ensure that the function handles exceptions when missing
     coordinates are not parsed correctly.
-
-    Tree structure in input_datatree:
-
-    |- science_one(lat, lon, time)
-    |- lat(lat)
-    |- lon(lon)
-    |- time(tim)
-    |- group_one
-       |- science_two(latitude, longitude, time)
-    |- group_two
-       |- science_three(x, y, z)
-        |- group_four
-          | science_four(x-dim, y-dim, z-dim)
-    |- group_four
-       |- science_five(abc, def, ghi)
-    |- group_five
-       |- science_six(y, x, '')
-    |- group_six
-       |- science_six(y, x, z, w)
 
     """
 
     test_args = [
         [
             "Test Net2CogError (abc, def, ghi) x,y not exisit",
-            "group_four/science_five",
+            "group_one/science_one",
             None,
         ],
         [
             "Test Net2CogError (y, x, '') z is empty string",
-            "group_five/science_six",
+            "group_two/science_two",
             None,
         ],
         [
             "Test Net2CogError for 4 dimension (y, x, z, w)",
-            "group_six/science_seven",
+            "group_three/science_three",
             None,
         ],
     ]
@@ -421,12 +439,13 @@ def test_reorder_3d_dimensions_exception(input_datatree_reorder_3d):
     for description, variable_path, expected_path in test_args:
         print(description)
         with pytest.raises(Net2CogError):
-            reorder_dimensions(input_datatree_reorder_3d, variable_path)
+            reorder_dimensions(input_datatree_bad_3d_variables, variable_path)
 
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim'],
+     ['XDim', 'YDim']],
 )
 def test_is_valid_spatial_dimensions_present(dimensions, logger):
     """Verify returns True for variable with spatial dimensions."""
@@ -444,7 +463,8 @@ def test_is_valid_spatial_dimensions_present(dimensions, logger):
 
 @pytest.mark.parametrize(
     'dimensions',
-    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim']],
+    [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim'],
+     ['XDim', 'YDim']],
 )
 def test_is_valid_spatial_dimensions_and_others_present(dimensions, logger):
     """Verify returns True, when spatial dimensions and others are present."""
@@ -474,6 +494,7 @@ def test_is_valid_spatial_dimensions_incomplete(dimension, logger):
             },
         ),
     )
+    print('Test variable.dim returns False when only one spatial dimension present')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
 
 
@@ -487,4 +508,300 @@ def test_is_valid_spatial_dimensions_absent(logger):
             },
         ),
     )
+    print('For variables (time) that do not have spatial dimensions, test returns False')
     assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+def test_is_valid_spatial_dimensions_XDim_YDim(input_datatree_2d_XDim_YDim, logger):
+    """Verify returns True, when spatial dimensions and others are present.
+    
+        |- science_one(XDim, YDim)
+        |- XDim
+        |- YDim
+        |- group_one
+            |- science_two(xDim, yDim)
+        |- group_two
+            |- science_three(Xdim, Ydim)
+        |- group_three
+            |- science_four(XDIM, YDIM)
+        |- group_four
+            |- science_five(xdim, ydim)
+
+    """
+    test_args = [
+        [
+            "Test XDim/YDim is valid spatial dimensions",
+            "science_one",
+            ("XDim", "YDim"),
+        ],
+        [
+            "Test xDim/yDim is valid spatial dimensions",
+            "group_one/science_two",
+            ("xDim", "yDim"),
+        ],
+        [
+            "Test xDim/yDim is valid spatial dimensions",
+            "group_two/science_three",
+            ("Xdim", "Ydim"),
+        ],
+        [
+            "Test XDIM/YDIM is valid spatial dimensions",
+            "group_three/science_four",
+            ("XDIM", "YDIM"),
+        ],
+        [
+            "Test xdim/ydim is valid spatial dimensions",
+            "group_four/science_five",
+            ("xdim", "ydim"),
+        ],
+    ]
+
+    for description, variable_path, expected_path in test_args:
+        print(description)
+        assert is_valid_spatial_dimensions(input_datatree_2d_XDim_YDim, variable_path, logger)
+
+
+@pytest.mark.parametrize('dimension', ['XDim', 'y-dim'])
+def test_is_valid_spatial_dimensions_XDim_y_dim_incomplete(dimension, logger):
+    """Verify returns False when only one spatial dimension present."""
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': ([dimension], np.ones((4)))},
+            coords={
+                dimension: (dimension, np.array([1, 2, 3, 4])),
+            },
+        ),
+    )
+    assert not is_valid_spatial_dimensions(test_datatree['science'], 'science', logger)
+
+
+def test_is_valid_spatial_dimensions_with_invalid_dim_names_with_valid_standard_name_units_success(logger):
+    """Verify returns True, when spatial dimensions has invalid dim name 'latlat' and 'lonlong
+    with correct standard_name and units."""
+    coords = {
+        "latlat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lonlon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert is_valid_spatial_dimensions(variable, "science", logger)
+
+
+def test_get_dim_names_from_cf_standard_name_units_success_lat_lon():
+    """Verify returns dimension name "lat" and "lon" when spatial
+    dimensions has correct standard_name and units.
+    
+    """
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "lon" and y_dim ==  "lat"
+
+
+def test_get_dim_names_from_cf_standard_name_units_success_xdim_ydim():
+    """Verify returns dimension name "XDim" and "YDim" when spatial
+    dimensions has correct standard_name and units.
+    
+    """
+    coords = {
+        "XDim": xr.DataArray([0], attrs={"standard_name": "projection_x_coordinate", "units": "m"}),
+        "YDim": xr.DataArray([0], attrs={"standard_name": "projection_y_coordinate", "units": "m"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "XDim" and y_dim ==  "YDim"
+
+
+def test_uppercase_dimensions_name_with_standard_name_units():
+    """Verify returns dimension name "Latitude" and "Longitude" when spatial
+    dimensions also has standard_name 'time' and units ' since '.
+    
+    """
+    coords = {
+        "Latitude": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "Longitude": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"}),
+        "time": xr.DataArray([0], attrs={"standard_name": "time", "units": "hours since 2001-01-01 00:00:00.0"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "Longitude" and y_dim ==  "Latitude"
+
+
+def test_missing_standard_name():
+    """Verify returns dimension name "abc" and "def" when spatial
+    dimensions does not have standard_name and valid units.
+    
+    """
+    coords = {
+        "abc": xr.DataArray([0], attrs={"units": "degrees_north"}),
+        "def": xr.DataArray([0], attrs={"standard_name": "longitude", "units": "degrees_east"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "def" and y_dim ==  "abc"
+
+
+def test_missing_units():
+    """Verify returns dimension name uppercase and cat "Lat" and "Lon"
+    when spatial dimensions does not have units."""
+    coords = {
+        "Lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
+        "Lon": xr.DataArray([0], attrs={"standard_name": "longitude"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    x_dim, y_dim = get_dim_names_from_cf_standard_name_units(variable)
+    assert x_dim ==  "Lon" and y_dim ==  "Lat"
+
+def test_invalid_standard_name_and_units(logger):
+    """Verify returns False, when spatial dimensions have invalid units."""
+    coords = {
+        "lat": xr.DataArray([0], attrs={"standard_name": "lat", "units": "degrees_nor"}),
+        "lon": xr.DataArray([0], attrs={"standard_name": "lon", "units": "degrees_ea"})
+    }
+    variable = xr.DataArray([1], coords=coords)
+    assert get_dim_names_from_cf_standard_name_units(variable) == (None, None)
+
+def test_empty_coords(logger):
+    """Verify returns False, when spatial dimensions have empty coordinates."""
+    variable = xr.DataArray([1])
+
+    assert get_dim_names_from_cf_standard_name_units(variable) == (None, None)
+
+@pytest.mark.parametrize(
+    "value_error_message, expected_handler",
+    [
+        (
+            "Variable None has conflicting _FillValue (255) and missing_value (200). Cannot encode data.",
+            apply_fillvalue_to_missing_value,
+        ),
+        (
+            "Variable None has conflicting missing_value (200) and _FillValue (255). Cannot encode data.",
+            apply_fillvalue_to_missing_value,
+        ),
+    ]
+)
+def test_get_value_error_handler_valid(input_datatree, value_error_message, expected_handler):
+    """Test that known ValueError messages return the correct handler."""
+    handler = get_value_error_handler(
+        input_datatree,
+        "group_five/variable_two",
+        value_error_message
+    )
+    assert handler == expected_handler
+
+@pytest.mark.parametrize(
+    "variable_path, expected_fill, expected_missing",
+    [
+        ("group_five/variable_one", 355, 300),
+        ("group_five/variable_two", 255, 200),
+        ("group_one/group_two", None, None),
+        ("group_six/variable_four", 255, 0),
+    ]
+)
+def test_get_fillvalue_and_missing_value(input_datatree,
+                                         variable_path,
+                                         expected_fill,
+                                         expected_missing
+                                        ):
+    """Test get_fillvalue_and_missing_value.  Verifies correct extraction of
+       _FillValue and missing_value from encoding or attrs.
+       Covers scenarios with missing metadata, malformed values,and identical attributes.
+
+    """
+    fill_value, missing_value = get_fillvalue_and_missing_value(input_datatree,
+                                                                variable_path
+                                                               )
+    assert fill_value == expected_fill
+    assert missing_value == expected_missing
+
+
+def test_apply_fillvalue_to_missing_value(input_datatree):
+    """Verifies that values matching missing_value are correctly
+       replaced with _FillValue. Also checks that the missing_value
+       attribute is removed and the process_note attribute is added.
+
+    """
+    expected_process_note = (
+        '_FillValue = -999 represents all missing data including fill values'
+        ' (orbit gaps, missing swaths) and other missing observations'
+        ' originally marked as 999'
+    )
+
+    variable_data = apply_fillvalue_to_missing_value(
+        input_datatree,
+        "group_six/variable_one"
+    )
+
+    result = variable_data.values
+
+    assert (result == np.array([[1, -999], [-999, 4]])).all()
+    assert "missing_value" not in variable_data.encoding
+    assert "missing_value" not in variable_data.attrs
+
+    process_note = variable_data.attrs.get("process_note")
+    assert process_note == expected_process_note
+
+def test_apply_fillvalue_to_missing_value_no_missing_value_exception(input_datatree):
+    """Ensures a ValueError exception if the missing_value attribute is absent
+
+    """
+    expected_exception = (
+        "Missing _FillValue or missing_value attribute."
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        apply_fillvalue_to_missing_value(
+            input_datatree,
+            "group_six/variable_two"
+        )
+
+def test_apply_fillvalue_to_missing_value_no_fillvalue_exception(input_datatree):
+    """Ensures a ValueError exception if the _FillValue attribute is absent
+
+    """
+    expected_exception = (
+        "Missing _FillValue or missing_value attribute."
+    )
+
+    with pytest.raises(ValueError, match=expected_exception):
+        apply_fillvalue_to_missing_value(
+            input_datatree,
+            "group_six/variable_three"
+        )
+
+def test_rename_3d_dimensions(input_datatree_reorder_3d):
+    """Ensure that a 3-dimensional array is rename to standard 'x'
+    and 'y' to create the correct dimension order in a new DataTree
+
+    """
+
+    test_args = [
+        [
+            "Test rename (lat, lon, time) to (y, x, time)",
+            "science_one",
+            ("y", "x", "time"),
+        ],
+        [
+            "Test reordered (latitude, longitude, time) to (y, x, time)",
+            "group_one/science_two",
+            ("y", "x", "time"),
+        ],
+        [
+            "Test reordered (y-dim, x-dim, z-dim) to (y, x, z-dim)",
+            "group_two/group_three/science_four",
+            ("y", "x", "z-dim"),
+        ],
+        [
+            "Test reordered (XDim, YDim, ZDim) to (x, y, ZDim)",
+            "group_four/science_five",
+            ("x", "y", "ZDim"),
+        ],
+    ]
+
+    for description, variable_path, expected_path in test_args:
+        print(description)
+        variable_data = rename_dimensions(input_datatree_reorder_3d[variable_path])
+
+        assert variable_data.dims == expected_path

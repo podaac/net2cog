@@ -36,11 +36,11 @@ def test_crs_nested_path_same_group(temp_dir, logger, spl2smp_nested_file):
     assert output_crs.is_projected
 
 
-def test_crs_nested_path_root_group(temp_dir, logger, nested_file):
+def test_crs_nested_path_root_group(temp_dir, logger, spl4cmdl_nested_file):
     """Test CRS variable with nested path at root group"""
 
     test_crs = CRS.from_epsg(6933)
-    test_file = pathlib.Path(temp_dir, nested_file)
+    test_file = pathlib.Path(temp_dir, spl4cmdl_nested_file)
     netcdf_file = os.path.abspath(test_file)
     input_datatree = xr.open_datatree(netcdf_file)
 
@@ -51,13 +51,13 @@ def test_crs_nested_path_root_group(temp_dir, logger, nested_file):
     assert output_crs.is_projected
 
 
-def test_crs_multiple_variable_selection_no_grid_mapping(temp_dir, smap_file, logger):
+def test_crs_multiple_variable_selection_no_grid_mapping(temp_dir, smap_rss_l3_sss_file, logger):
     """Test the default EPSG:4326 CRS variable's handling of the absence of grid
     mapping attributes.
 
     """
 
-    test_file = pathlib.Path(temp_dir, smap_file)
+    test_file = pathlib.Path(temp_dir, smap_rss_l3_sss_file)
 
     netcdf_file = os.path.abspath(test_file)
     input_datatree = xr.open_datatree(netcdf_file)
