@@ -722,3 +722,104 @@ def input_datatree_2d_XDim_YDim():
     )
 
     return dt
+
+
+@fixture()
+def input_datatree_datetime_units():
+    """ Build a DataTree containing datetime64[ns] variables
+        for each CF‑compliant time unit (days, hours, minutes,
+        milliseconds, microseconds). Used to verify
+        apply_datetime_conversion.
+
+    """
+    reference_time = np.datetime64("2000-01-01 00:00:00")
+
+    # Root DataTree
+    dt = xr.DataTree()
+
+    dt["group_one"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_days": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "days since 2000-01-01 11:58:55.816Z"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_two"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_hours": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "hours since 2000-01-01 11:58:55.816UTC"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_three"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_minutes": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "minutes since 2000-01-01 11:58:55.816Z"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_four"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_seconds": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "seconds since 2000-01-01 11:58:55.816ZUTC"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_five"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_milliseconds": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "milliseconds since 2000-01-01 11:58:55.816Z"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_six"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_microseconds": (
+                    ["time"],
+                    np.array([reference_time], dtype="datetime64[ns]"),
+                    {"units": "microseconds since 2000-01-01 11:58:55.816UTC"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+    dt["group_seven"] = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "time_seconds": (
+                    ["time"],
+                    np.array([reference_time], dtype="float64"),
+                    {"units": "2000-01-01 11:58:55"},
+                )
+            },
+            coords={"time": ("time", [0])},
+        )
+    )
+
+    return dt

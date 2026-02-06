@@ -20,6 +20,7 @@ from net2cog.utilities import (
     apply_fillvalue_to_missing_value,
     get_fillvalue_and_missing_value,
     rename_dimensions,
+    apply_datetime_conversion,
 )
 
 
@@ -805,3 +806,79 @@ def test_rename_3d_dimensions(input_datatree_reorder_3d):
         variable_data = rename_dimensions(input_datatree_reorder_3d[variable_path])
 
         assert variable_data.dims == expected_path
+
+
+@pytest.mark.parametrize(
+    "description, variable_path, expected_units, "
+    "expected_dtype",
+    [
+        (
+            "Testing days since",
+            "group_one/time_days",
+            "days since 2000-01-01 11:58:55.816Z",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing hours since",
+            "group_two/time_hours",
+            "hours since 2000-01-01 11:58:55.816UTC",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing minutes since",
+            "group_three/time_minutes",
+            "minutes since 2000-01-01 11:58:55.816Z",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing seconds since",
+            "group_four/time_seconds",
+            "seconds since 2000-01-01 11:58:55.816ZUTC",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing milliseconds since",
+            "group_five/time_milliseconds",
+            "milliseconds since 2000-01-01 11:58:55.816Z",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing microseconds since",
+            "group_six/time_microseconds",
+            "microseconds since 2000-01-01 11:58:55.816UTC",
+            "datetime64[ns]",
+        ),
+        (
+            "Testing seconds without since",
+            "group_seven/time_seconds",
+            "2000-01-01 11:58:55",
+            "float64",
+        ),
+    ],
+)
+def test_apply_datetime_conversion_all_units(
+    input_datatree_datetime_units,
+    description,
+    variable_path,
+    expected_units,
+    expected_dtype,
+):
+    """Verify datetime64 variables convert correctly for all CF units."""
+    print(description)
+
+    # Precondition: dtype before conversion
+    assert (
+        expected_dtype
+        == input_datatree_datetime_units[variable_path].dtype
+    )
+
+    result = apply_datetime_conversion(
+        input_datatree_datetime_units,
+        variable_path,
+    )
+
+    # Units should be preserved
+    assert result.attrs["units"] == expected_units
+
+    # dtype should now be float
+    assert result.dtype == np.float64

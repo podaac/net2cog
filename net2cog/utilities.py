@@ -22,6 +22,7 @@ DTYPE_SUPPORTED = [
     'int32',
     'float32',
     'float64',
+    'datetime64[ns]'
 ]
 DIM_STANDARD_NAME_AND_UNITS = {
     'projection_x_coordinate': ['m', 'meters', 'meter'],
@@ -32,6 +33,22 @@ DIM_STANDARD_NAME_AND_UNITS = {
 DIM_STANDARD_NAME = {
     'x': ['projection_x_coordinate', 'projection_x_angular_coordinate', 'longitude'],
     'y': ['projection_y_coordinate', 'projection_y_angular_coordinate', 'latitude'],
+}
+NETCDF_TIME_UNITS_CFTIME = [
+    'days',
+    'hours',
+    'minutes',
+    'seconds',
+    'milliseconds',
+    'microseconds',
+]
+NETCDF_TIME_UNITS_CONVERSION_MAP = {
+    'days': np.timedelta64(1, 'D'),
+    'hours': np.timedelta64(1, 'h'),
+    'minutes': np.timedelta64(1, 'm'),
+    'seconds': np.timedelta64(1, 's'),
+    'milliseconds': np.timedelta64(1, 'ms'),
+    'microseconds': np.timedelta64(1, 'us'),
 }
 
 
@@ -451,6 +468,9 @@ def get_value_error_handler(
     ):
         return apply_fillvalue_to_missing_value
 
+    if value_error_message == 'Could not convert object to NumPy datetime':
+        return apply_datetime_conversion
+
     raise ValueError(value_error_message)
 
 
@@ -514,6 +534,85 @@ def apply_fillvalue_to_missing_value(
                     f"as {missing_value}")
 
     variable_modified.attrs["process_note"] = process_note
+
+    return variable_modified
+
+
+def apply_datetime_conversion(
+        nc_xarray: xr.DataTree, variable_path: str
+) -> xr.DataArray:
+    """Convert datetime64 variables into numeric CF time values using the
+    units specified in the variable's metadata. Supports all CF-compliant
+    time units (days, hours, minutes, seconds, milliseconds, microseconds).
+
+    Parameters
+    ----------
+    nc_xarray : xarray.DataTree
+        DataTree object representing the root group of the NetCDF-4 file.
+    variable_path: str
+        Variable path is present in DataTree
+
+    Returns
+    -------
+    xr.DataArray
+        New DataArray where dtype are cast to float64 and
+        the parsed units attribute.
+
+    """
+    # Extract the variable and copy only its values
+    variable = nc_xarray[variable_path]
+
+    if not np.issubdtype(variable.dtype, np.datetime64):
+        return variable
+
+    values_tmp = variable.values.copy()
+    attrs = variable.attrs.copy()
+
+    unit_value = variable.encoding.get('units')
+    if unit_value is None:
+        unit_value = variable.attrs.get('units')
+
+    if unit_value is None:
+        return variable
+
+    attrs['units'] = unit_value
+
+    # Remove common timezone 'Z' or 'UTC'
+    unit_value = unit_value.replace('Z', '').replace('UTC', '').strip()
+
+    # Check for "<unit> since <epoch>"
+    if ' since ' not in unit_value:
+        return variable
+
+    # Parse "<unit> since <date>"
+    unit_name, unit_date_time = unit_value.split(' since ')
+    unit_name = unit_name.strip().lower()
+
+    if unit_name not in NETCDF_TIME_UNITS_CFTIME:
+        return variable
+
+    # Romve T if needed '2000-01-01T00:00:00' or '2000-01-01 00:00:00')
+    unit_date_time = unit_date_time.replace('T', ' ').strip()
+
+    # Convert '2000-01-01 00:00:00' to epoch_time
+    epoch_time = np.datetime64(unit_date_time)
+
+    time_to_units = NETCDF_TIME_UNITS_CONVERSION_MAP[unit_name]
+
+    # Convert datetime64 → float seconds
+    values_tmp = (
+        variable.values.astype('datetime64[ns]') - epoch_time
+    ) / time_to_units
+    values_tmp = values_tmp.astype('float64')
+
+    # Create new DataArray with modified values using xarray constructor
+    variable_modified = xr.DataArray(
+        values_tmp,
+        dims=variable.dims,
+        coords=variable.coords,
+        attrs=attrs,
+        name=variable.name
+    )
 
     return variable_modified
 
