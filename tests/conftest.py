@@ -39,6 +39,10 @@ class DataFiles:
     SPL3SMP_COLLECTION = 'SPL3SMP_009'
     SPL3SMP_BASENAME = 'SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4'
 
+    # SPL3SMP_E
+    SPL3SMP_E_COLLECTION = 'SPL3SMP_E_006'
+    SPL3SMP_E_BASENAME = 'SMAP_L3_SM_P_E_20251030_R19240_001_subset_annotated.nc4'
+
     # SPL3FTP_E
     SPL3FTP_COLLECTION = 'SPL3FTP_E_004'
     SPL3FTP_BASENAME = 'SMAP_L3_FT_P_E_freeze_thaw_time_seconds_subsetted_regridded.nc4'
@@ -248,6 +252,23 @@ def spl3smp_nested_3d_annotated_file(copy_test_file: Callable):
     return copy_test_file(
         DataFiles.SPL3SMP_COLLECTION,
         DataFiles.SPL3SMP_BASENAME
+    )
+
+
+@fixture(scope="function")
+def spl3smp_e_all_variables_subsetted_annotated_file(copy_test_file: Callable):
+    """Path to SPL3SMP_E gridded input file, copied into the test directory.
+
+    This file is already subsetted and to be a bounding box region of a single
+    science variable (Soil_Moisture_Retrieval_Data_AM/surface_flag,
+    Soil_Moisture_Retrieval_Data_AM/tb_time_seconds, and
+    Soil_Moisture_Retrieval_Data_PM/landcover_class) to
+    reduce file size in the repository.
+
+    """
+    return copy_test_file(
+        DataFiles.SPL3SMP_E_COLLECTION,
+        DataFiles.SPL3SMP_E_BASENAME
     )
 
 
