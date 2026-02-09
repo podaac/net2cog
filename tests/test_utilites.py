@@ -809,48 +809,55 @@ def test_rename_3d_dimensions(input_datatree_reorder_3d):
 
 
 @pytest.mark.parametrize(
-    "description, variable_path, expected_units, "
-    "expected_dtype",
+    "description, variable_path, expected_value, "
+    "expected_units, expected_dtype",
     [
         (
             "Testing days since",
             "group_one/time_days",
+            2.0,
             "days since 2000-01-01 11:58:55.816Z",
             "datetime64[ns]",
         ),
         (
             "Testing hours since",
             "group_two/time_hours",
+            12.0,
             "hours since 2000-01-01 11:58:55.816UTC",
             "datetime64[ns]",
         ),
         (
             "Testing minutes since",
             "group_three/time_minutes",
+            30.0,
             "minutes since 2000-01-01 11:58:55.816Z",
             "datetime64[ns]",
         ),
         (
             "Testing seconds since",
             "group_four/time_seconds",
+            45.0,
             "seconds since 2000-01-01 11:58:55.816ZUTC",
             "datetime64[ns]",
         ),
         (
             "Testing milliseconds since",
             "group_five/time_milliseconds",
+            500.0,
             "milliseconds since 2000-01-01 11:58:55.816Z",
             "datetime64[ns]",
         ),
         (
             "Testing microseconds since",
             "group_six/time_microseconds",
+            750.0,
             "microseconds since 2000-01-01 11:58:55.816UTC",
             "datetime64[ns]",
         ),
         (
             "Testing seconds without since",
             "group_seven/time_seconds",
+            123.45,
             "2000-01-01 11:58:55",
             "float64",
         ),
@@ -860,10 +867,11 @@ def test_apply_datetime_conversion_all_units(
     input_datatree_datetime_units,
     description,
     variable_path,
+    expected_value,
     expected_units,
     expected_dtype,
 ):
-    """Verify datetime64 variables convert correctly for all CF units."""
+    """Verify datetime64[ns] variables convert to float64."""
     print(description)
 
     # Precondition: dtype before conversion
@@ -882,3 +890,5 @@ def test_apply_datetime_conversion_all_units(
 
     # dtype should now be float
     assert result.dtype == np.float64
+
+    assert np.float64(result.values) == expected_value
