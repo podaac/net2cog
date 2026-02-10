@@ -591,10 +591,8 @@ def apply_datetime_conversion(
     if unit_name not in NETCDF_TIME_UNITS_CFTIME:
         return variable
 
-    # Romve T if needed '2000-01-01T11:58:55.816' or '2000-01-01 11:58:55.816')
-    unit_date_time = unit_date_time.replace('T', ' ').strip()
-
-    # Convert '2000-01-01 11:58:55.816' to epoch_time
+    # Convert '2000-01-01 11:58:55.816' to
+    # epoch_time '2000-01-01T11:58:55.816'
     epoch_time = np.datetime64(unit_date_time)
 
     time_to_units = NETCDF_TIME_UNITS_CONVERSION_MAP[unit_name]
