@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issues/74](https://github.com/podaac/net2cog/issues/74): Processing SPL3SMP_E list of variables to GeoTIFF fails on tb_time_seconds (float64, units=seconds since <epoch>), no results returned
 ### Deprecated
 ### Removed
 ### Fixed
