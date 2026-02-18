@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Fixed
 ### Security
+- [pull/71](https://github.com/podaac/net2cog/pull/71): Bump urllib from 2.6.2 to 2.6.3
+- [pull/69](https://github.com/podaac/net2cog/pull/69): Bump pynacl from 1.6.1 to 1.6.2
 
 ## [1.1.0]
 ### Changed
