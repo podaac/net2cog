@@ -39,10 +39,6 @@ class DataFiles:
     SPL3SMP_COLLECTION = 'SPL3SMP_009'
     SPL3SMP_BASENAME = 'SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4'
 
-    # SPL3SMP_E
-    SPL3SMP_E_COLLECTION = 'SPL3SMP_E_006'
-    SPL3SMP_E_BASENAME = 'SMAP_L3_SM_P_E_20251030_R19240_001_subset_annotated.nc4'
-
     # SPL3FTP_E
     SPL3FTP_COLLECTION = 'SPL3FTP_E_004'
     SPL3FTP_BASENAME = 'SMAP_L3_FT_P_E_freeze_thaw_time_seconds_subsetted_regridded.nc4'
@@ -252,23 +248,6 @@ def spl3smp_nested_3d_annotated_file(copy_test_file: Callable):
     return copy_test_file(
         DataFiles.SPL3SMP_COLLECTION,
         DataFiles.SPL3SMP_BASENAME
-    )
-
-
-@fixture(scope="function")
-def spl3smp_e_all_variables_subsetted_annotated_file(copy_test_file: Callable):
-    """Path to SPL3SMP_E gridded input file, copied into the test directory.
-
-    This file is already subsetted and to be a bounding box region of a single
-    science variable (Soil_Moisture_Retrieval_Data_AM/surface_flag,
-    Soil_Moisture_Retrieval_Data_AM/tb_time_seconds, and
-    Soil_Moisture_Retrieval_Data_PM/landcover_class) to
-    reduce file size in the repository.
-
-    """
-    return copy_test_file(
-        DataFiles.SPL3SMP_E_COLLECTION,
-        DataFiles.SPL3SMP_E_BASENAME
     )
 
 
@@ -740,134 +719,6 @@ def input_datatree_2d_XDim_YDim():
                 "ydim": ("ydim", np.array([3, 4, 5])),
             },
         ),
-    )
-
-    return dt
-
-
-@fixture()
-def input_datatree_datetime_units():
-    """ Build a DataTree containing datetime64[ns] variables
-        for each CF‑compliant time unit (days, hours, minutes,
-        milliseconds, microseconds). Used to verify
-        apply_datetime_conversion.
-
-    """
-    # Using a fixed epoch for the data
-    reference_time = np.datetime64("2000-01-01 11:58:55.816")
-
-    # Root DataTree
-    dt = xr.DataTree()
-
-    # Group 1: Days (Offset by 2 days)
-    # Expected result after conversion: 2.0    
-    dt["group_one"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_days": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(2, 'D')],
-                             dtype="datetime64[ns]"),
-                    {"units": "days since 2000-01-01 11:58:55.816Z"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 2: Hours (Offset by 12 hours)
-    # Expected result: 12.0
-    dt["group_two"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_hours": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(12, 'h')],
-                             dtype="datetime64[ns]"),
-                    {"units": "hours since 2000-01-01 11:58:55.816UTC"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 3: Minutes (Offset by 30 minutes)
-    # Expected result: 30.0
-    dt["group_three"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_minutes": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(30, 'm')],
-                             dtype="datetime64[ns]"),
-                    {"units": "minutes since 2000-01-01 11:58:55.816Z"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 4: Seconds (Offset by 45 seconds)
-    # Expected result: 45.0
-    dt["group_four"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_seconds": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(45, 's')],
-                             dtype="datetime64[ns]"),
-                    {"units": "seconds since 2000-01-01 11:58:55.816ZUTC"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 5: Milliseconds (Offset by 500 ms)
-    # Expected result: 500.0
-    dt["group_five"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_milliseconds": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(500, 'ms')],
-                             dtype="datetime64[ns]"),
-                    {"units": "milliseconds since 2000-01-01 11:58:55.816Z"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 6: Microseconds (Offset by 750 us)
-    # Expected result: 750.0
-    dt["group_six"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_microseconds": (
-                    ["time"],
-                    np.array([reference_time + np.timedelta64(750, 'us')],
-                             dtype="datetime64[ns]"),
-                    {"units": "microseconds since 2000-01-01 11:58:55.816UTC"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
-    )
-
-    # Group 7: Already numeric (Float64)
-    # Logic should skip conversion and return the value as-is
-    dt["group_seven"] = xr.DataTree(
-        dataset=xr.Dataset(
-            data_vars={
-                "time_seconds": (
-                    ["time"],
-                    np.array([123.45], dtype="float64"),
-                    {"units": "2000-01-01 11:58:55"},
-                )
-            },
-            coords={"time": ("time", [0])},
-        )
     )
 
     return dt
