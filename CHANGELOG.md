@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issues/79](https://github.com/podaac/net2cog/issues/79): Updated python requirement, dependency versions and default netcdf engine used in xarray
 ### Deprecated
 ### Removed
 ### Fixed
