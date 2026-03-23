@@ -30,7 +30,7 @@ concurrency:
 
 env:
   POETRY_VERSION: "1.8.3"
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.13"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -162,9 +162,9 @@ jobs:
             -Dsonar.tests=tests/
             -Dsonar.projectName=${{ github.repository }}
             -Dsonar.projectVersion=${{ env.software_version }}
-            -Dsonar.python.version=3.10,3.11
+            -Dsonar.python.version=3.12
       - name: Run Snyk as a blocking step
-        uses: snyk/actions/python-3.10@master
+        uses: snyk/actions/python-3.12@master
         env:
             SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -175,7 +175,7 @@ jobs:
               --severity-threshold=high
               --fail-on=all
       - name: Run Snyk on Python
-        uses: snyk/actions/python-3.10@master
+        uses: snyk/actions/python-3.12@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -401,5 +401,5 @@ jobs:
         if: |
           github.ref == 'refs/heads/main'    ||
           startsWith(github.ref, 'refs/heads/release')
-        run: 
+        run:
           echo "Deploy $CONTAINER_IMAGE_URI to $ENV"
