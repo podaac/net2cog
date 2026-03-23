@@ -450,12 +450,18 @@ def netcdf_converter(
     netcdf_file = os.path.abspath(input_nc_file)
     logger.debug('NetCDF Path: %s', netcdf_file)
 
-    if netcdf_file.endswith(('.nc', '.nc4', 'h5')):
+    if netcdf_file.endswith(('.nc', '.nc4', '.h5')):
         logger.info("Reading %s", basename(netcdf_file))
+        if netcdf_file.endswith(('.h5', '.nc4')):
+            nc_engine='h5netcdf'
+        else:
+            # Fall back to legacy netCDF4 engine if needed
+            nc_engine='netcdf4'
 
         input_datatree = xr.open_datatree(
             netcdf_file,
             chunks='auto',
+            engine=nc_engine,
             decode_coords=False,
             decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
             decode_timedelta=False,
