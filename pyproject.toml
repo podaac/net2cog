@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "net2cog"
-version = "1.1.1"
+version = "1.2.0rc1"
 description = "NetCDF to COG Conversion Service"
 authors = ["podaac <podaac@jpl.nasa.gov>"]
 license = "Apache-2.0"
@@ -15,25 +15,27 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-boto3 = "^1.28.3"
-requests = "^2.31.0"
-netcdf4 = "^1.6.4"
-xarray = "^2025.3.0"
-rio-cogeo = "^5.3.3"
-rasterio = "^1.4.3"
-rioxarray = "^0.17.0"
-numpy = "^2.0.1"
+python = ">=3.12,<4.0"
+boto3 = "^1.42.73"
+requests = "^2.33.0"
+netcdf4 = "^1.7.4"
+xarray = "^2026.2.0"
+rio-cogeo = "^7.0.1"
+rasterio = "^1.5.0"
+rioxarray = "^0.22.0"
+numpy = "^2.4.3"
 harmony-service-lib = "2.11.0"
-dask = "^2024.0.0"
+dask = "^2026.3.0"
+h5netcdf = "^1.8.1"
+h5py = "^3.16.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-flake8 = "^6.0.0"
-pytest-cov = "^4.1.0"
-pylint = "^2.17.4"
-sphinx = "^7.0.1"
-coverage = "^7.0.2"
+pytest = "^9.0.2"
+flake8 = "^7.3.0"
+pytest-cov = "^7.1.0"
+pylint = "^4.0.5"
+sphinx = "^9.1.0"
+coverage = "^7.13.5"
 
 [tool.poetry.extras]
 harmony = ["harmony-service-lib"]
