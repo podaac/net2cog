@@ -17,7 +17,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0"
 boto3 = "^1.42.73"
-requests = "^2.32.5"
+requests = "^2.33.0"
 netcdf4 = "^1.7.4"
 xarray = "^2026.2.0"
 rio-cogeo = "^7.0.1"
