@@ -683,14 +683,15 @@ def identify_file(src_path: str) -> str:
 
     return ""
 
-def has_object_dtype_variables(filepath):
+
+def has_object_dtype_variables(filepath: str):
     """
     Peek into a NetCDF-4/HDF5 file and return True if any dataset
     has an object dtype (variable-length strings, ragged arrays, etc.)
     that would cause dask's auto-rechunking to fail.
     """
     def _check_group(group):
-        for name, item in group.items():
+        for _, item in group.items():
             if isinstance(item, h5py.Dataset):
                 if item.dtype.kind == 'O' or h5py.check_vlen_dtype(item.dtype):
                     return True
