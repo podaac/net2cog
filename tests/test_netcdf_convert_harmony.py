@@ -12,7 +12,6 @@ from unittest.mock import patch
 import pytest
 from harmony_service_lib.exceptions import HarmonyException
 
-#from net2cog.utilities import Net2CogError
 import net2cog.netcdf_convert_harmony
 
 

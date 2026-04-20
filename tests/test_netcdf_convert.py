@@ -466,16 +466,19 @@ def test_spl3ftp_e_v4_dtype_timedelta(
     assert cog_validate(pathlib.Path(results[0]))[0]
 
 
-def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta(
+def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
     temp_dir, logger, spl3ftp_e_variable_selection_file
 ):
     """Verify that attempting to open a SPL3FTP_E variable with a timedelta
     or timestamp dtype set to decode_timedelta=None (default) in
-    xr.open_datatree(test_file, decode_timedelta=None, ...) no longer raises
-    a ValueError exception.
+    xr.open_datatree(test_file, decode_timedelta=None, ...) raises the
+    expected ValueError exception
 
     """
     test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
+    expected_exception = (
+        'Could not convert object to NumPy timedelta'
+    )
 
     input_datatree = xr.open_datatree(
         test_file,
@@ -485,16 +488,13 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta(
         use_cftime=None,
     )
 
-    result = _write_cogtiff(
-        temp_dir,
-        input_datatree,
-        'Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds',
-        logger
-    )
-
-    # in lieu of more detailed checking, just verify the file was generated
-    assert result is not None
-    assert basename(result) == 'Freeze_Thaw_Retrieval_Data_Polar_freeze_thaw_time_seconds.tif'
+    with pytest.raises(ValueError, match=expected_exception):
+        _write_cogtiff(
+            temp_dir,
+            input_datatree,
+            'Freeze_Thaw_Retrieval_Data_Polar/freeze_thaw_time_seconds',
+            logger
+        )
 
 
 def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_true(
