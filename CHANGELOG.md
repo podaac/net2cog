@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- [issue/72](https://github.com/podaac/net2cog/issues/72): Empty results that would previously log a message now throw a service error
+- [issue/86](https://github.com/podaac/net2cog/issues/86): Data variables not found in the input granule now log a warning instead of throwing a service error
+- More robust checking of xarray engine and chunking support for granule inputs
 ### Deprecated
 ### Removed
 ### Fixed
+- [issue/85](https://github.com/podaac/net2cog/issues/85): Added complex dtypes to list of supported dtypes for data variables
 ### Security
 
 ## [1.2.0]
