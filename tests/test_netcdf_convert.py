@@ -484,7 +484,7 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
         test_file,
         decode_coords=None,
         decode_times=None,
-        decode_timedelta=None,
+        decode_timedelta=True,
         use_cftime=None,
     )
 
