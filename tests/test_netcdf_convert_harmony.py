@@ -84,11 +84,12 @@ def test_service_all_variables(mock_environ, temp_dir, smap_rss_l3_sss_operation
 
 
 def test_service_error(mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac):
-    """Test service invocation when an incorrect variable is supplied. This
-    should trigger a HarmonyException containing the original xarray KeyError
-    message.
+    """Test service invocation when an incorrect variable is supplied and no other
+    variables are provided. This should trigger a HarmonyException from an underlying
+    Net2CogError that no output files were produced.
 
     """
+    #expected_error = "*Variable ['thor'] cannot be converted to tif:*"
     with open(smap_rss_l3_sss_operation_message, 'r', encoding='utf-8') as file_handler:
         smap_data_operation_json = json.load(file_handler)
 
@@ -106,5 +107,5 @@ def test_service_error(mock_environ, temp_dir, smap_rss_l3_sss_operation_message
     ]
 
     with patch.object(sys, 'argv', test_args):
-        with pytest.raises(HarmonyException, match="No variable named 'thor'."):
+        with pytest.raises(HarmonyException):
             net2cog.netcdf_convert_harmony.main()

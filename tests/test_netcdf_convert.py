@@ -473,7 +473,7 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
     or timestamp dtype set to decode_timedelta=None (default) in
     xr.open_datatree(test_file, decode_timedelta=None, ...) raises the
     expected ValueError exception
-    
+
     """
     test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
     expected_exception = (
@@ -484,7 +484,7 @@ def test_spl3ftp_e_v4_convert_object_to_numpy_timedelta_valueerror_exception(
         test_file,
         decode_coords=None,
         decode_times=None,
-        decode_timedelta=None,
+        decode_timedelta=True,
         use_cftime=None,
     )
 
@@ -504,7 +504,7 @@ def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_t
     or timestamp dtype set to `decode_timedelta=xr.coders.CFDatetimeCoder(use_cftime=True)`
     using xr.open_datatree(test_file, decode_timedelta=True, ...) raises the
     expected ValueError exception
-    
+
     """
     test_file = pathlib.Path(temp_dir, spl3ftp_e_variable_selection_file)
     expected_exception = (
