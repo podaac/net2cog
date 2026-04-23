@@ -117,7 +117,7 @@ def _write_cogtiff(
             nc_xarray[variable_path].rio.to_raster(temp_file_name)
         except KeyError:
             # Occurs when trying to locate a variable that is not in the DataTree
-            warnings.warn(
+            logger.warning(
                 f'Variable {variable_path} cannot be converted to tiff:'
                 f" No variable named '{variable_path}'."
             )
@@ -472,42 +472,41 @@ def netcdf_converter(
 
     # recognized files will have engine == 'h5netcdf' or 'netcdf4'
     nc_engine = identify_file(netcdf_file)
-    if nc_engine != '':
-        logger.info('Reading %s', basename(netcdf_file))
-        # Some granules have variables that can't be chunked
-        use_chunks = not has_object_dtype_variables(netcdf_file)
-
-        input_datatree = xr.open_datatree(
-            netcdf_file,
-            chunks='auto' if use_chunks else None,
-            engine=nc_engine,
-            decode_coords=False,
-            decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
-            decode_timedelta=False,
-            concat_characters=True,
-        )
-
-        if not var_list:
-            # Empty list means "all" variables, so get all variables in
-            # the `xarray.DataTree`.
-            var_list = get_all_data_variables(input_datatree, logger)
-
-        raw_output_files = [
-            _write_cogtiff(str(output_directory), input_datatree, variable_name, logger)
-            for variable_name in var_list
-        ]
-        # Remove None returns, e.g., for excluded or non-existent variables
-        output_files = [
-            output_file
-            for output_file in raw_output_files
-            if output_file is not None
-        ]
-
-    else:
+    if nc_engine is None:
         raise Net2CogError(
             str(var_list),
             f'Not a NetCDF/HDF-5 file; Skipped file: {netcdf_file}'
         )
+
+    logger.info('Reading %s', basename(netcdf_file))
+    # Some granules have variables that can't be chunked
+    use_chunks = not has_object_dtype_variables(netcdf_file)
+
+    input_datatree = xr.open_datatree(
+        netcdf_file,
+        chunks='auto' if use_chunks else None,
+        engine=nc_engine,
+        decode_coords=False,
+        decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
+        decode_timedelta=False,
+        concat_characters=True,
+    )
+
+    if not var_list:
+        # Empty list means "all" variables, so get all variables in
+        # the `xarray.DataTree`.
+        var_list = get_all_data_variables(input_datatree, logger)
+
+    raw_output_files = [
+        _write_cogtiff(str(output_directory), input_datatree, variable_name, logger)
+        for variable_name in var_list
+    ]
+    # Remove None returns, e.g., for excluded or non-existent variables
+    output_files = [
+        output_file
+        for output_file in raw_output_files
+        if output_file is not None
+    ]
 
     # If all variables are invalid
     if output_files == []:

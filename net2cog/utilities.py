@@ -658,7 +658,7 @@ def get_fillvalue_and_missing_value(
     return fill_value, missing_value
 
 
-def identify_file(src_path: str) -> str:
+def identify_file(src_path: str) -> str | None:
     """
     Detects file format from magic bytes and returns the appropriate xarray engine.
 
@@ -681,10 +681,10 @@ def identify_file(src_path: str) -> str:
     if header[:8] == b"\x89HDF\r\n\x1a\n":
         return "h5netcdf"
 
-    return ""
+    return None
 
 
-def has_object_dtype_variables(filepath: str):
+def has_object_dtype_variables(filepath: str) -> bool:
     """
     Peek into a NetCDF-4/HDF5 file and return True if any dataset
     has an object dtype (variable-length strings, ragged arrays, etc.)

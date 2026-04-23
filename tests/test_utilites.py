@@ -9,6 +9,7 @@ Test the net2cog utilites functionality.
 import pytest
 import numpy as np
 import xarray as xr
+import h5py
 from net2cog.netcdf_convert import Net2CogError
 from net2cog.utilities import (
     resolve_relative_path,
@@ -21,6 +22,8 @@ from net2cog.utilities import (
     get_fillvalue_and_missing_value,
     rename_dimensions,
     apply_datetime_conversion,
+    identify_file,
+    has_object_dtype_variables,
 )
 
 
@@ -515,7 +518,7 @@ def test_is_valid_spatial_dimensions_absent(logger):
 
 def test_is_valid_spatial_dimensions_XDim_YDim(input_datatree_2d_XDim_YDim, logger):
     """Verify returns True, when spatial dimensions and others are present.
-    
+
         |- science_one(XDim, YDim)
         |- XDim
         |- YDim
@@ -590,7 +593,7 @@ def test_is_valid_spatial_dimensions_with_invalid_dim_names_with_valid_standard_
 def test_get_dim_names_from_cf_standard_name_units_success_lat_lon():
     """Verify returns dimension name "lat" and "lon" when spatial
     dimensions has correct standard_name and units.
-    
+
     """
     coords = {
         "lat": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
@@ -604,7 +607,7 @@ def test_get_dim_names_from_cf_standard_name_units_success_lat_lon():
 def test_get_dim_names_from_cf_standard_name_units_success_xdim_ydim():
     """Verify returns dimension name "XDim" and "YDim" when spatial
     dimensions has correct standard_name and units.
-    
+
     """
     coords = {
         "XDim": xr.DataArray([0], attrs={"standard_name": "projection_x_coordinate", "units": "m"}),
@@ -618,7 +621,7 @@ def test_get_dim_names_from_cf_standard_name_units_success_xdim_ydim():
 def test_uppercase_dimensions_name_with_standard_name_units():
     """Verify returns dimension name "Latitude" and "Longitude" when spatial
     dimensions also has standard_name 'time' and units ' since '.
-    
+
     """
     coords = {
         "Latitude": xr.DataArray([0], attrs={"standard_name": "latitude", "units": "degrees_north"}),
@@ -633,7 +636,7 @@ def test_uppercase_dimensions_name_with_standard_name_units():
 def test_missing_standard_name():
     """Verify returns dimension name "abc" and "def" when spatial
     dimensions does not have standard_name and valid units.
-    
+
     """
     coords = {
         "abc": xr.DataArray([0], attrs={"units": "degrees_north"}),
@@ -892,3 +895,82 @@ def test_apply_datetime_conversion_all_units(
     assert result.dtype == np.float64
 
     assert np.float64(result.values) == expected_value
+
+
+# ---------------------------------------------------------------------------
+# identify_file tests
+# ---------------------------------------------------------------------------
+
+def test_identify_file_hdf5_returns_h5netcdf(data_dir):
+    """HDF5 files (including NetCDF-4) should be identified as 'h5netcdf'."""
+    hdf5_file = (
+        f"{data_dir}/SPL4CMDL_007/SMAP_L4_C_mdl_20150403T000000_Vv7042_001.h5"
+    )
+    assert identify_file(hdf5_file) == "h5netcdf"
+
+
+def test_identify_file_netcdf4_hdf5_returns_h5netcdf(data_dir):
+    """NetCDF-4 files stored in HDF5 format should be identified as 'h5netcdf'."""
+    nc4_file = (
+        f"{data_dir}/SPL3SMP_009"
+        "/SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4"
+    )
+    assert identify_file(nc4_file) == "h5netcdf"
+
+
+def test_identify_file_classic_netcdf_returns_netcdf4(tmp_path):
+    """NetCDF classic format (CDF\x01 magic bytes) should return 'netcdf4'."""
+    classic_nc = tmp_path / "classic.nc"
+    classic_nc.write_bytes(b"CDF\x01" + b"\x00" * 100)
+    assert identify_file(str(classic_nc)) == "netcdf4"
+
+
+def test_identify_file_64bit_offset_netcdf_returns_netcdf4(tmp_path):
+    """NetCDF 64-bit offset format (CDF\x02 magic bytes) should return 'netcdf4'."""
+    nc64 = tmp_path / "offset64.nc"
+    nc64.write_bytes(b"CDF\x02" + b"\x00" * 100)
+    assert identify_file(str(nc64)) == "netcdf4"
+
+
+def test_identify_file_unknown_format_returns_none(tmp_path):
+    """Unrecognised file content should return None."""
+    unknown = tmp_path / "unknown.bin"
+    unknown.write_bytes(b"\x00\x01\x02\x03\x04\x05\x06\x07")
+    assert identify_file(str(unknown)) is None
+
+
+def test_identify_file_cdf_version3_returns_none(tmp_path):
+    """CDF with an unrecognised version byte (not 1 or 2) should return None."""
+    bad_cdf = tmp_path / "bad_version.nc"
+    bad_cdf.write_bytes(b"CDF\x03" + b"\x00" * 100)
+    assert identify_file(str(bad_cdf)) is None
+
+
+# ---------------------------------------------------------------------------
+# has_object_dtype_variables tests
+# ---------------------------------------------------------------------------
+
+def test_has_object_dtype_variables_false_for_numeric_hdf5(data_dir):
+    """An HDF5 file with only numeric datasets should return False."""
+    hdf5_file = (
+        f"{data_dir}/SPL4CMDL_007/SMAP_L4_C_mdl_20150403T000000_Vv7042_001.h5"
+    )
+    assert has_object_dtype_variables(hdf5_file) is False
+
+
+def test_has_object_dtype_variables_false_for_numeric_nc4(data_dir):
+    """A NetCDF-4 file with only numeric datasets should return False."""
+    nc4_file = (
+        f"{data_dir}/SPL3SMP_009"
+        "/SMAP_L3_SM_P_20150410_R19240_001_subset_3d_annotated.nc4"
+    )
+    assert has_object_dtype_variables(nc4_file) is False
+
+
+def test_has_object_dtype_variables_true_for_object_nc(data_dir):
+    """A NetCDF-4 file with only numeric datasets should return False."""
+    nc_file = (
+        f"{data_dir}/MIRS_AM1_CGAS_004"
+        "/MISR_AM1_CGAS_OCT_12_2022_F15_0032_subsetted.nc"
+    )
+    assert has_object_dtype_variables(nc_file) is True
