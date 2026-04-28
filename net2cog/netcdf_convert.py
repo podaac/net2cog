@@ -114,7 +114,7 @@ def _write_cogtiff(
                     f'{variable_path} does not have spatial dimensions such as '
                     'lat/lon, x/y, latitude/longitude, x-dim/y-dim, or XDim/YDim',
                 )
-            nc_xarray[variable_path].rio.to_raster(temp_file_name)
+            nc_xarray[variable_path].rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
         except KeyError:
             # Occurs when trying to locate a variable that is not in the DataTree
             logger.warning(
@@ -151,24 +151,19 @@ def _write_cogtiff(
                                               logger,
                                               temp_file_name)
 
-        # Option to add additional GDAL config settings
-        # config = dict(GDAL_NUM_THREADS='ALL_CPUS', GDAL_TIFF_OVR_BLOCKSIZE='128')
-        # with rasterio.Env(**config):
-
         logger.info('Starting conversion... %s', output_file_name)
 
         with rasterio.open(temp_file_name, mode='r+') as src_dataset:
-            # if src_dst.crs is None:
-            #     src_dst.crs = crs
             src_dataset.crs = get_crs_from_grid_mapping(
                 nc_xarray, variable_path, logger
             )
             dst_profile = cog_profiles.get('deflate')
+            dst_profile.update({'BIGTIFF': 'IF_SAFER'})
             cog_translate(
                 src_dataset,
                 output_file_name,
                 dst_profile,
-                use_cog_driver=True
+                use_cog_driver=True,
             )
 
     logger.info('Finished conversion, writing variable: %s', output_file_name)
@@ -306,7 +301,7 @@ def process_value_error_exception(
         # net2cog issue #8: since we work with DataArray instead of DataTree
         # the error handler has been updated accordingly
         variable_data = value_error_handler(nc_xarray, variable_path)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except ValueError as valerr:
         raise ValueError(valerr) from valerr
     except Exception as err:    # pylint: disable=broad-except
@@ -343,7 +338,7 @@ def process_invalid_dimension_order_exception(
     try:
         # reorder_dimensions now returns DataArray directly
         variable_data = reorder_dimensions(nc_xarray, variable_path)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
         logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
@@ -382,7 +377,7 @@ def process_dimension_error_exception(
     """
     try:
         nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
         logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
@@ -423,7 +418,7 @@ def process_missing_spatial_dimension_error_exception(
         # Both functions now return DataArray directly
         variable_data = reorder_dimensions(nc_xarray, variable_path)
         variable_data = rename_dimensions(variable_data)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
         logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)

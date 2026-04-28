@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- [issue/87](https://github.com/podaac/net2cog/issues/86): Added support for Big TIFF outputs if the input raster is determined to be sufficiently large (>4.6 GB)
 ### Changed
 - [issue/72](https://github.com/podaac/net2cog/issues/72): Empty results that would previously log a message now throw a service error
 - [issue/86](https://github.com/podaac/net2cog/issues/86): Data variables not found in the input granule now log a warning instead of throwing a service error
