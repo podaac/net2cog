@@ -7,11 +7,14 @@ Test the netcdf conversion functionality.
 """
 import re
 import pathlib
+import struct
 from os.path import basename, splitext
+from unittest.mock import patch
 from rio_cogeo.cogeo import cog_validate, cog_info
 
 import numpy as np
 import pytest
+import rasterio
 import xarray as xr
 
 from net2cog.netcdf_convert import (
@@ -684,3 +687,76 @@ def test_process_missing_spatial_dimension_error_catch_exception(
             str(test_file),
         )
 
+
+def test_write_cogtiff_generates_bigtiff_for_large_datatree(temp_dir, logger):
+    """Verify that _write_cogtiff generates a BigTIFF output for a large DataTree.
+
+    _write_cogtiff always passes BIGTIFF='IF_SAFER' to cog_translate. GDAL
+    uses BigTIFF format when the uncompressed raster would exceed ~4 GB (e.g.
+    a 33 000 × 33 000 float32 raster ≈ 4.3 GB). Allocating that much data in
+    a unit test is impractical, so cog_translate is mocked to:
+
+      1. Capture and assert that BIGTIFF='IF_SAFER' is present in the
+         destination profile, confirming the mechanism is correctly wired.
+      2. Write a real BigTIFF output file, simulating the format GDAL's
+         IF_SAFER would produce for a sufficiently large input dataset.
+
+    The TIFF magic number in the output file is then inspected to confirm
+    BigTIFF format (magic == 43) rather than standard TIFF (magic == 42).
+    """
+    n = 100
+    test_datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                'sst': (['y', 'x'], np.zeros((n, n), dtype='float32')),
+            },
+            coords={
+                'y': ('y', np.linspace(-90, 90, n)),
+                'x': ('x', np.linspace(-180, 180, n)),
+            },
+        )
+    )
+
+    captured_profile = {}
+
+    def _mock_cog_translate(src_dataset, output_path, dst_profile, **_):
+        """Capture the destination profile and write a real BigTIFF output."""
+        captured_profile.update(dst_profile)
+        # write a bigtiff even though it's not 4.6 GB
+        with rasterio.open(
+            output_path, 'w',
+            driver='GTiff',
+            height=src_dataset.height,
+            width=src_dataset.width,
+            count=src_dataset.count,
+            dtype=src_dataset.dtypes[0],
+            crs=src_dataset.crs,
+            transform=src_dataset.transform,
+            BIGTIFF='YES',
+        ) as dst:
+            dst.write(src_dataset.read())
+
+    with patch('net2cog.netcdf_convert.cog_translate', side_effect=_mock_cog_translate):
+        output_path = _write_cogtiff(temp_dir, test_datatree, 'sst', logger)
+
+    assert output_path is not None, 'No output file was generated.'
+    assert pathlib.Path(output_path).is_file(), 'Output file does not exist.'
+
+    # Verify that _write_cogtiff passed BIGTIFF='IF_SAFER' to cog_translate.
+    # This is the parameter that causes GDAL to produce BigTIFF for large data.
+    assert captured_profile.get('BIGTIFF') == 'IF_SAFER', (
+        f"Expected BIGTIFF='IF_SAFER' in cog_translate profile, "
+        f"got: {captured_profile.get('BIGTIFF')!r}"
+    )
+
+    # Verify the output file is BigTIFF format.
+    # TIFF magic number at bytes 2–3: 42 (0x2A) = standard TIFF, 43 (0x2B) = BigTIFF.
+    with open(output_path, 'rb') as fh:
+        byte_order = fh.read(2)
+        endian = '<' if byte_order == b'II' else '>'
+        magic = struct.unpack(f'{endian}H', fh.read(2))[0]
+
+    assert magic == 43, (
+        f'Expected BigTIFF (magic number 43) but got {magic}. '
+        'Output is standard TIFF, not BigTIFF.'
+    )
