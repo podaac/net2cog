@@ -8,6 +8,7 @@ Utility functions for use within the net2cog service.
 
 from logging import Logger
 from collections.abc import Callable
+import h5py
 import xarray as xr
 import numpy as np
 
@@ -22,6 +23,8 @@ DTYPE_SUPPORTED = [
     'int32',
     'float32',
     'float64',
+    'complex64',
+    'complex128',
     'datetime64[ns]'
 ]
 DIM_STANDARD_NAME_AND_UNITS = {
@@ -653,3 +656,49 @@ def get_fillvalue_and_missing_value(
         missing_value = nc_xarray[variable_path].attrs.get("missing_value")
 
     return fill_value, missing_value
+
+
+def identify_file(src_path: str) -> str | None:
+    """
+    Detects file format from magic bytes and returns the appropriate xarray engine.
+
+    Args:
+        src_path (str): Path to the source file
+
+    Returns:
+        str: "h5netcdf" or "netcdf4", "" if unrecognized file type
+    """
+    with open(src_path, "rb") as f:
+        header = f.read(8)
+
+    # NetCDF classic or 64-bit offset -> netcdf4 engine
+    if header[:3] == b"CDF":
+        version = header[3]
+        if version in (1, 2):
+            return "netcdf4"
+
+    # HDF5 signature, covers both NetCDF-4 and plain HDF5 -> h5netcdf engine
+    if header[:8] == b"\x89HDF\r\n\x1a\n":
+        return "h5netcdf"
+
+    return None
+
+
+def has_object_dtype_variables(filepath: str) -> bool:
+    """
+    Peek into a NetCDF-4/HDF5 file and return True if any dataset
+    has an object dtype (variable-length strings, ragged arrays, etc.)
+    that would cause dask's auto-rechunking to fail.
+    """
+    def _check_group(group):
+        for _, item in group.items():
+            if isinstance(item, h5py.Dataset):
+                if item.dtype.kind == 'O' or h5py.check_vlen_dtype(item.dtype):
+                    return True
+            elif isinstance(item, h5py.Group):
+                if _check_group(item):
+                    return True
+        return False
+
+    with h5py.File(filepath, 'r') as f:
+        return _check_group(f)

@@ -12,7 +12,7 @@ import pathlib
 from logging import Logger
 from os.path import join as path_join, basename
 from tempfile import TemporaryDirectory
-from typing import List
+import warnings
 
 import rasterio
 import rioxarray  # noqa
@@ -36,7 +36,9 @@ from net2cog.utilities import (
     is_valid_dtype,
     is_valid_spatial_dimensions,
     get_value_error_handler,
-    construct_variable_path
+    construct_variable_path,
+    identify_file,
+    has_object_dtype_variables,
 )
 
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
@@ -82,11 +84,20 @@ def _write_cogtiff(
     - The output name for converted GeoTIFFs is `<variable path>.tif`, with any
       slashes replaced with underscores.
     """
+    # Filter a warning that comes when opening the src_dataset with rasterio in r+ mode,
+    # "Source dataset should be opened in read-only mode. Use of datasets opened in modes
+    # other than 'r' will be disallowed in a future version."
+    # r+ mode is required to mutate the crs of the src_dataset for cog_translate
+    warnings.filterwarnings(
+        'ignore',
+        message='Source dataset should be*',
+        category=rasterio.RasterioDeprecationWarning
+    )
 
-    logger.debug("NetCDF Var: %s", variable_path)
+    logger.debug('NetCDF Var: %s', variable_path)
 
     if variable_path in EXCLUDE_VARS:
-        logger.debug(f"Variable {variable_path} is excluded. Will not produce COG")
+        logger.debug(f'Variable {variable_path} is excluded. Will not produce COG')
         return None
 
     output_basename = f'{variable_path}.tif'.lstrip('/').replace('/', '_')
@@ -107,15 +118,16 @@ def _write_cogtiff(
                     f'{variable_path} does not have spatial dimensions such as '
                     'lat/lon, x/y, latitude/longitude, x-dim/y-dim, or XDim/YDim',
                 )
-            nc_xarray[variable_path].rio.to_raster(temp_file_name)
-        except KeyError as error:
+            nc_xarray[variable_path].rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
+        except KeyError:
             # Occurs when trying to locate a variable that is not in the DataTree
-            raise Net2CogError(
-                variable_path,
-                f"No variable named '{variable_path}'."
-            ) from error
+            logger.warning(
+                f'Variable {variable_path} cannot be converted to tiff:'
+                f" No variable named '{variable_path}'."
+            )
+            return None
         except (LookupError, TypeError) as err:
-            logger.info("Variable %s cannot be converted to tif: %s",
+            logger.info('Variable %s cannot be converted to tif: %s',
                         variable_path, err)
             raise Net2CogError(variable_path, str(err)) from err
         except ValueError as error:
@@ -125,46 +137,41 @@ def _write_cogtiff(
                                           logger,
                                           temp_file_name)
         except InvalidDimensionOrder as dmerr:
-            logger.info("%s: reorder dimensions...", dmerr)
+            logger.info('%s: reorder dimensions...', dmerr)
             process_invalid_dimension_order_exception(nc_xarray,
                                                       variable_path,
                                                       logger,
                                                       temp_file_name)
         except MissingSpatialDimensionError as dmerr:
-            logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
+            logger.info('%s: No x or y xarray dimensions, adding them...', dmerr)
             process_missing_spatial_dimension_error_exception(nc_xarray,
                                                               variable_path,
                                                               logger,
                                                               temp_file_name)
         except DimensionError as dmerr:
-            logger.info("%s: No x or y xarray dimensions, adding them...", dmerr)
+            logger.info('%s: No x or y xarray dimensions, adding them...', dmerr)
             process_dimension_error_exception(nc_xarray,
                                               variable_path,
                                               logger,
                                               temp_file_name)
 
-        # Option to add additional GDAL config settings
-        # config = dict(GDAL_NUM_THREADS="ALL_CPUS", GDAL_TIFF_OVR_BLOCKSIZE="128")
-        # with rasterio.Env(**config):
-
-        logger.info("Starting conversion... %s", output_file_name)
+        logger.info('Starting conversion... %s', output_file_name)
 
         with rasterio.open(temp_file_name, mode='r+') as src_dataset:
-            # if src_dst.crs is None:
-            #     src_dst.crs = crs
             src_dataset.crs = get_crs_from_grid_mapping(
                 nc_xarray, variable_path, logger
             )
-            dst_profile = cog_profiles.get("deflate")
+            dst_profile = cog_profiles.get('deflate')
+            dst_profile.update({'BIGTIFF': 'IF_SAFER'})
             cog_translate(
                 src_dataset,
                 output_file_name,
                 dst_profile,
-                use_cog_driver=True
+                use_cog_driver=True,
             )
 
-    logger.info("Finished conversion, writing variable: %s", output_file_name)
-    logger.info("NetCDF conversion complete. Returning COG generated.")
+    logger.info('Finished conversion, writing variable: %s', output_file_name)
+    logger.info('NetCDF conversion complete. Returning COG generated.')
     return output_file_name
 
 
@@ -172,7 +179,8 @@ def get_all_data_variables(
     root_datatree: xr.DataTree,
     logger: Logger,
 ) -> list[str]:
-    """Traverse tree and retrieve all data variables in all groups.
+    """
+    Traverse tree and retrieve all data variables in all groups.
 
     Parameters
     ----------
@@ -214,7 +222,8 @@ def get_crs_from_grid_mapping(
     variable_path: str,
     logger: Logger,
 ) -> CRS:
-    """Check the metadata attributes for the variable to find the associated
+    """
+    Check the metadata attributes for the variable to find the associated
     grid mapping variable.  If the grid mapping variable, as referred to in the
     grid_mapping CF-Convention metadata attribute, does not exist then
     default to "+proj=latlong".
@@ -238,7 +247,7 @@ def get_crs_from_grid_mapping(
     # Default CRS EPSG:4326
     crs = CRS.from_epsg(4326)
 
-    grid_mapping_attribute = nc_xarray[variable_path].attrs.get("grid_mapping")
+    grid_mapping_attribute = nc_xarray[variable_path].attrs.get('grid_mapping')
 
     if grid_mapping_attribute is not None:
         cf_reference_attribute = resolve_relative_path(
@@ -249,7 +258,7 @@ def get_crs_from_grid_mapping(
             if cf_reference_attribute is not None:
                 cf_parameters = nc_xarray[cf_reference_attribute].attrs
                 crs = pyCRS.from_cf(cf_parameters)
-                logger.info("CRS: %s", crs)
+                logger.info('CRS: %s', crs)
         except CRSError as error:
             raise Net2CogError(
                 variable_path, f"An unsupported target CRS. Use default CRS '{crs}'."
@@ -265,7 +274,8 @@ def process_value_error_exception(
     logger: Logger,
     temp_file_name: str,
 ):
-    """ This function uses the error message to identify a suitable handler
+    """
+    This function uses the error message to identify a suitable handler
     function that can transform the input DataTree to resolve the issue.
     It then retries the raster conversion using the corrected data.
     If the error persists or another exception occurs, it logs the
@@ -291,15 +301,15 @@ def process_value_error_exception(
             variable_path,
             str(error_message)
         )
-        logger.info("Calling %s() method...", value_error_handler)
+        logger.info('Calling %s() method...', value_error_handler)
         # net2cog issue #8: since we work with DataArray instead of DataTree
         # the error handler has been updated accordingly
         variable_data = value_error_handler(nc_xarray, variable_path)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except ValueError as valerr:
         raise ValueError(valerr) from valerr
     except Exception as err:    # pylint: disable=broad-except
-        logger.info("Variable %s cannot be converted to tif: %s",
+        logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
         raise Net2CogError(variable_path, str(err)) from err
 
@@ -310,7 +320,8 @@ def process_invalid_dimension_order_exception(
     logger: Logger,
     temp_file_name: str,
 ):
-    """ This function uses the error message to identify a suitable handler
+    """
+    This function uses the error message to identify a suitable handler
     function that can transform the input DataTree to resolve the issue.
     It then retries the raster conversion using the corrected data.
     If the error persists or another exception occurs, it logs the
@@ -331,9 +342,9 @@ def process_invalid_dimension_order_exception(
     try:
         # reorder_dimensions now returns DataArray directly
         variable_data = reorder_dimensions(nc_xarray, variable_path)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
-        logger.info("Variable %s cannot be converted to tif: %s",
+        logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
         raise Net2CogError(variable_path, str(err)) from err
 
@@ -344,7 +355,8 @@ def process_dimension_error_exception(
     logger: Logger,
     temp_file_name: str,
 ):
-    """ Handles an InvalidDimensionOrder exception by attempting
+    """
+    Handles an InvalidDimensionOrder exception by attempting
     to swap the dimensions of a NetCDF variable to match the expected
     spatial layout for raster conversion.
 
@@ -369,9 +381,9 @@ def process_dimension_error_exception(
     """
     try:
         nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name)
+        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
-        logger.info("Variable %s cannot be converted to tif: %s",
+        logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
         raise Net2CogError(variable_path, str(err)) from err
 
@@ -382,7 +394,8 @@ def process_missing_spatial_dimension_error_exception(
     logger: Logger,
     temp_file_name: str,
 ):
-    """ Handles an MissingSpatialDimensionError exception by attempting
+    """
+    Handles an MissingSpatialDimensionError exception by attempting
     to reorder then rename coordinates to standard 'x' and 'y' required
     by rasterio
 
@@ -409,9 +422,9 @@ def process_missing_spatial_dimension_error_exception(
         # Both functions now return DataArray directly
         variable_data = reorder_dimensions(nc_xarray, variable_path)
         variable_data = rename_dimensions(variable_data)
-        variable_data.rio.to_raster(temp_file_name)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
-        logger.info("Variable %s cannot be converted to tif: %s",
+        logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)
         raise Net2CogError(variable_path, str(err)) from err
 
@@ -421,8 +434,9 @@ def netcdf_converter(
     output_directory: pathlib.Path,
     var_list: list[str],
     logger: Logger,
-) -> List[str]:
-    """Primary function for beginning NetCDF conversion using rasterio,
+) -> list[str]:
+    """
+    Primary function for beginning NetCDF conversion using rasterio,
     rioxarray and xarray
 
     Parameters
@@ -445,47 +459,62 @@ def netcdf_converter(
     -----
     Currently uses local file paths, no s3 paths
     """
-    logger.info("Input file name: %s", input_nc_file)
+    # Filter a warning about HDF-5 dimension access, not relevant to net2cog use case
+    # "The 'phony_dims' kwarg now defaults to 'access'. Previously 'phony_dims=None'
+    # would raise an error. For full netcdf equivalence please use phony_dims='sort'."
+    warnings.filterwarnings(
+        'ignore',
+        message="The 'phony_dims'*",
+        category=UserWarning
+    )
+    logger.info('Input file name: %s', input_nc_file)
 
     netcdf_file = os.path.abspath(input_nc_file)
     logger.debug('NetCDF Path: %s', netcdf_file)
 
-    if netcdf_file.endswith(('.nc', '.nc4', '.h5')):
-        logger.info("Reading %s", basename(netcdf_file))
-        if netcdf_file.endswith(('.h5', '.nc4')):
-            nc_engine = 'h5netcdf'
-        else:
-            # Fall back to legacy netCDF4 engine if needed
-            nc_engine = 'netcdf4'
-
-        input_datatree = xr.open_datatree(
-            netcdf_file,
-            chunks='auto',
-            engine=nc_engine,
-            decode_coords=False,
-            decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
-            decode_timedelta=False,
-            concat_characters=True,
+    # recognized files will have engine == 'h5netcdf' or 'netcdf4'
+    nc_engine = identify_file(netcdf_file)
+    if nc_engine is None:
+        raise Net2CogError(
+            str(var_list),
+            f'Not a NetCDF/HDF-5 file; Skipped file: {netcdf_file}'
         )
 
-        if not var_list:
-            # Empty list means "all" variables, so get all variables in
-            # the `xarray.DataTree`.
-            var_list = get_all_data_variables(input_datatree, logger)
+    logger.info('Reading %s', basename(netcdf_file))
+    # Some granules have variables that can't be chunked
+    use_chunks = not has_object_dtype_variables(netcdf_file)
 
-        raw_output_files = [
-            _write_cogtiff(str(output_directory), input_datatree, variable_name, logger)
-            for variable_name in var_list
-        ]
-        # Remove None returns, e.g., for excluded variables
-        output_files = [
-            output_file
-            for output_file in raw_output_files
-            if output_file is not None
-        ]
+    input_datatree = xr.open_datatree(
+        netcdf_file,
+        chunks='auto' if use_chunks else None,
+        engine=nc_engine,
+        decode_coords=False,
+        decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
+        decode_timedelta=False,
+        concat_characters=True,
+    )
 
-    else:
-        logger.info("Not a NetCDF file; Skipped file: %s", netcdf_file)
-        output_files = []
+    if not var_list:
+        # Empty list means "all" variables, so get all variables in
+        # the `xarray.DataTree`.
+        var_list = get_all_data_variables(input_datatree, logger)
+
+    raw_output_files = [
+        _write_cogtiff(str(output_directory), input_datatree, variable_name, logger)
+        for variable_name in var_list
+    ]
+    # Remove None returns, e.g., for excluded or non-existent variables
+    output_files = [
+        output_file
+        for output_file in raw_output_files
+        if output_file is not None
+    ]
+
+    # If all variables are invalid
+    if output_files == []:
+        raise Net2CogError(
+            str(var_list),
+            f'No output files generated for {netcdf_file}'
+        )
 
     return output_files
