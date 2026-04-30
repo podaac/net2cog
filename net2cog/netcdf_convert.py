@@ -84,6 +84,10 @@ def _write_cogtiff(
     - The output name for converted GeoTIFFs is `<variable path>.tif`, with any
       slashes replaced with underscores.
     """
+    # Filter a warning that comes when opening the src_dataset with rasterio in r+ mode,
+    # "Source dataset should be opened in read-only mode. Use of datasets opened in modes
+    # other than 'r' will be disallowed in a future version."
+    # r+ mode is required to mutate the crs of the src_dataset for cog_translate
     warnings.filterwarnings(
         'ignore',
         message='Source dataset should be*',
@@ -455,6 +459,9 @@ def netcdf_converter(
     -----
     Currently uses local file paths, no s3 paths
     """
+    # Filter a warning about HDF-5 dimension access, not relevant to net2cog use case
+    # "The 'phony_dims' kwarg now defaults to 'access'. Previously 'phony_dims=None'
+    # would raise an error. For full netcdf equivalence please use phony_dims='sort'."
     warnings.filterwarnings(
         'ignore',
         message="The 'phony_dims'*",

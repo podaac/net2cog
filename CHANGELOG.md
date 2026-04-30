@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+
+## [1.3.0]
+### Added
 - [issue/87](https://github.com/podaac/net2cog/issues/86): Added support for Big TIFF outputs if the input raster is determined to be sufficiently large (>4.6 GB)
 ### Changed
 - [issue/72](https://github.com/podaac/net2cog/issues/72): Empty results that would previously log a message now throw a service error
@@ -93,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing.
 
 
-[Unreleased]: https://github.com/podaac/net2cog/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/podaac/net2cog/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/podaac/net2cog/compare/v1.3.0...HEAD
 [1.2.0]: https://github.com/podaac/net2cog/compare/v1.2.0...HEAD
 [1.1.1]: https://github.com/podaac/net2cog/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/podaac/net2cog/compare/v1.0.0...HEAD
