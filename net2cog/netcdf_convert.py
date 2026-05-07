@@ -168,6 +168,7 @@ def _write_cogtiff(
                 output_file_name,
                 dst_profile,
                 use_cog_driver=True,
+                quiet=True,
             )
 
     logger.info('Finished conversion, writing variable: %s', output_file_name)
