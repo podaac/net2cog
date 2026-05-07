@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 ### Removed
 ### Fixed
+- [issue/94](https://github.com/podaac/net2cog/issues/94): Use `valid_min` and `valid_max` CF attributes for fill value masking
 ### Security
 
 ## [1.3.0]
