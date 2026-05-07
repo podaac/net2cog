@@ -24,6 +24,7 @@ from net2cog.utilities import (
     apply_datetime_conversion,
     identify_file,
     has_object_dtype_variables,
+    apply_valid_range_mask,
 )
 
 
@@ -974,3 +975,150 @@ def test_has_object_dtype_variables_true_for_object_nc(data_dir):
         "/MISR_AM1_CGAS_OCT_12_2022_F15_0032_subsetted.nc"
     )
     assert has_object_dtype_variables(nc_file) is True
+
+
+# ---------------------------------------------------------------------------
+# apply_valid_range_mask tests
+# ---------------------------------------------------------------------------
+
+def _make_da(data, dtype, attrs=None, encoding=None):
+    """Helper: build a 2-D (lat, lon) DataArray for valid-range tests."""
+    da = xr.DataArray(
+        np.array(data, dtype=dtype),
+        dims=('lat', 'lon'),
+        attrs=attrs or {},
+    )
+    if encoding:
+        da.encoding.update(encoding)
+    return da
+
+
+def test_apply_valid_range_mask_no_attributes_returns_unchanged():
+    """Variable with no valid_range attrs is returned unchanged."""
+    da = _make_da([[1.0, 2.0], [3.0, 4.0]], np.float32)
+    result = apply_valid_range_mask(da)
+    np.testing.assert_array_equal(result.values, da.values)
+
+
+def test_apply_valid_range_mask_valid_range_in_attrs():
+    """Values outside valid_range attr are masked to NaN."""
+    da = _make_da([[1.0, -9999.0], [-9998.999, 5.0]], np.float32,
+                  attrs={'valid_range': np.array([-9998.0, 9999.0], dtype=np.float32)})
+    result = apply_valid_range_mask(da)
+    assert result.values[0, 0] == pytest.approx(1.0)
+    assert result.values[1, 1] == pytest.approx(5.0)
+    assert np.isnan(result.values[0, 1])   # -9999.0 < valid_min
+    assert np.isnan(result.values[1, 0])   # -9998.999 < valid_min
+
+
+def test_apply_valid_range_mask_valid_range_in_encoding():
+    """valid_range stored in encoding is respected."""
+    da = _make_da([[0.0, 200.0], [-1.0, 100.0]], np.float32,
+                  encoding={'valid_range': np.array([0.0, 100.0], dtype=np.float32)})
+    result = apply_valid_range_mask(da)
+    assert result.values[0, 0] == pytest.approx(0.0)
+    assert result.values[1, 1] == pytest.approx(100.0)
+    assert np.isnan(result.values[0, 1])   # 200.0 > valid_max
+    assert np.isnan(result.values[1, 0])   # -1.0 < valid_min
+
+
+def test_apply_valid_range_mask_valid_min_only():
+    """Only valid_min masks values below the threshold."""
+    da = _make_da([[-1.0, 0.0], [5.0, 10.0]], np.float64,
+                  attrs={'valid_min': 0.0})
+    result = apply_valid_range_mask(da)
+    assert np.isnan(result.values[0, 0])   # -1.0 < valid_min
+    assert result.values[0, 1] == pytest.approx(0.0)
+    assert result.values[1, 0] == pytest.approx(5.0)
+    assert result.values[1, 1] == pytest.approx(10.0)
+
+
+def test_apply_valid_range_mask_valid_max_only():
+    """Only valid_max masks values above the threshold."""
+    da = _make_da([[0.0, 50.0], [100.0, 101.0]], np.float64,
+                  attrs={'valid_max': 100.0})
+    result = apply_valid_range_mask(da)
+    assert result.values[0, 0] == pytest.approx(0.0)
+    assert result.values[0, 1] == pytest.approx(50.0)
+    assert result.values[1, 0] == pytest.approx(100.0)
+    assert np.isnan(result.values[1, 1])   # 101.0 > valid_max
+
+
+def test_apply_valid_range_mask_valid_min_and_max_without_valid_range():
+    """Separate valid_min and valid_max attrs are both applied."""
+    da = _make_da([[-1.0, 5.0], [50.0, 101.0]], np.float64,
+                  attrs={'valid_min': 0.0, 'valid_max': 100.0})
+    result = apply_valid_range_mask(da)
+    assert np.isnan(result.values[0, 0])   # -1.0 < valid_min
+    assert result.values[0, 1] == pytest.approx(5.0)
+    assert result.values[1, 0] == pytest.approx(50.0)
+    assert np.isnan(result.values[1, 1])   # 101.0 > valid_max
+
+
+def test_apply_valid_range_mask_valid_range_takes_precedence():
+    """valid_range overrides conflicting valid_min / valid_max attrs."""
+    da = _make_da([[5.0, 50.0], [85.0, 105.0]], np.float64,
+                  attrs={
+                      'valid_range': np.array([10.0, 90.0]),
+                      'valid_min': 0.0,   # should be ignored
+                      'valid_max': 200.0, # should be ignored
+                  })
+    result = apply_valid_range_mask(da)
+    assert np.isnan(result.values[0, 0])   # 5.0 < valid_range[0]
+    assert result.values[0, 1] == pytest.approx(50.0)
+    assert result.values[1, 0] == pytest.approx(85.0)
+    assert np.isnan(result.values[1, 1])   # 105.0 > valid_range[1]
+
+
+def test_apply_valid_range_mask_integer_dtype():
+    """valid_range masking also works on integer dtypes."""
+    da = _make_da([[-1, 0], [100, 101]], np.int16,
+                  attrs={'valid_range': np.array([0, 100])})
+    result = apply_valid_range_mask(da)
+    assert np.isnan(result.values[0, 0])
+    assert result.values[0, 1] == pytest.approx(0.0)
+    assert result.values[1, 0] == pytest.approx(100.0)
+    assert np.isnan(result.values[1, 1])
+
+
+def test_apply_valid_range_mask_boundary_values_are_valid():
+    """Boundary values (equal to valid_min / valid_max) are kept."""
+    da = _make_da([[-9999.0, 9999.0], [0.0, 1.0]], np.float32,
+                  attrs={'valid_range': np.array([-9999.0, 9999.0], dtype=np.float32)})
+    result = apply_valid_range_mask(da)
+    assert result.values[0, 0] == pytest.approx(-9999.0)
+    assert result.values[0, 1] == pytest.approx(9999.0)
+
+
+def test_apply_valid_range_mask_timedelta_dtype_skipped():
+    """Timedelta variables are returned unchanged (unsupported comparison type)."""
+    da = xr.DataArray(
+        np.array([np.timedelta64(1, 's'), np.timedelta64(2, 's')], dtype='timedelta64[s]'),
+        dims=('time',),
+        attrs={'valid_range': np.array([0.0, 100.0])},
+    )
+    result = apply_valid_range_mask(da)
+    assert result is da
+
+
+def test_apply_valid_range_mask_datetime_dtype_skipped():
+    """Datetime variables are returned unchanged (unsupported comparison type)."""
+    da = xr.DataArray(
+        np.array(['2020-01-01', '2020-01-02'], dtype='datetime64[D]'),
+        dims=('time',),
+        attrs={'valid_range': np.array([0.0, 100.0])},
+    )
+    result = apply_valid_range_mask(da)
+    assert result is da
+
+
+def test_apply_valid_range_mask_datatree_returned_unchanged():
+    """A DataTree passed to apply_valid_range_mask is returned as-is."""
+    dt = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={'science': (['lat', 'lon'], np.ones((2, 3)))},
+            coords={'lat': [1, 2], 'lon': [3, 4, 5]},
+        )
+    )
+    result = apply_valid_range_mask(dt)
+    assert result is dt

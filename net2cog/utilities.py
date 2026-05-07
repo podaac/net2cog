@@ -658,6 +658,72 @@ def get_fillvalue_and_missing_value(
     return fill_value, missing_value
 
 
+def apply_valid_range_mask(
+    variable: xr.DataArray | xr.DataTree,
+) -> xr.DataArray | xr.DataTree:
+    """Mask values outside the valid range defined by CF convention attributes.
+
+    Applies masking based on ``valid_range``, ``valid_min``, and ``valid_max``
+    attributes, following CF conventions. This replicates the masking that the
+    netCDF4-python library performs automatically but that the h5netcdf engine
+    leaves to the caller.
+
+    ``valid_range`` takes precedence over separate ``valid_min`` / ``valid_max``
+    attributes when both are present. Attributes are searched in ``encoding``
+    first, then in ``attrs``.
+
+    Non-DataArray inputs (e.g. a DataTree node) are returned unchanged.
+
+    Parameters
+    ----------
+    variable : xr.DataArray | xr.DataTree
+        The variable to apply valid range masking to.
+
+    Returns
+    -------
+    xr.DataArray | xr.DataTree
+        DataArray with values outside the valid range set to NaN, or the
+        original object unchanged if it is not a DataArray or no valid range
+        attributes are present.
+
+    """
+    if not isinstance(variable, xr.DataArray):
+        return variable
+
+    # Comparisons against float valid_range values are only meaningful for
+    # integer and floating-point dtypes.  Use dtype.kind rather than
+    # np.issubdtype because timedelta64 is stored as a signed integer
+    # internally and can be misidentified by np.issubdtype as np.integer.
+    # dtype.kind: 'i'=signed int, 'u'=unsigned int, 'f'=float.
+    if variable.dtype.kind not in ('i', 'u', 'f'):
+        return variable
+
+    valid_range = variable.encoding.get('valid_range')
+    if valid_range is None:
+        valid_range = variable.attrs.get('valid_range')
+
+    if valid_range is not None:
+        valid_min = valid_range[0]
+        valid_max = valid_range[1]
+    else:
+        valid_min = variable.encoding.get('valid_min')
+        if valid_min is None:
+            valid_min = variable.attrs.get('valid_min')
+
+        valid_max = variable.encoding.get('valid_max')
+        if valid_max is None:
+            valid_max = variable.attrs.get('valid_max')
+
+    if valid_min is None and valid_max is None:
+        return variable
+
+    if valid_min is not None and valid_max is not None:
+        return variable.where((variable >= valid_min) & (variable <= valid_max))
+    if valid_min is not None:
+        return variable.where(variable >= valid_min)
+    return variable.where(variable <= valid_max)
+
+
 def identify_file(src_path: str) -> str | None:
     """
     Detects file format from magic bytes and returns the appropriate xarray engine.
