@@ -8,6 +8,7 @@ Functions related to converting a NetCDF file to other formats.
 """
 
 import os
+import io
 import pathlib
 from logging import Logger
 from os.path import join as path_join, basename
@@ -168,7 +169,7 @@ def _write_cogtiff(
                 output_file_name,
                 dst_profile,
                 use_cog_driver=True,
-                quiet=True,
+                progress_out=io.StringIO(),
             )
 
     logger.info('Finished conversion, writing variable: %s', output_file_name)
