@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minor changes and dependency updates
 ### Deprecated
 ### Removed
+- Excess logging from cog_translate
 ### Fixed
 ### Security
 
