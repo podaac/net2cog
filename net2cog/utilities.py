@@ -717,13 +717,17 @@ def apply_valid_range_mask(
     if valid_min is None and valid_max is None:
         return variable
 
-    fill_value = variable.encoding.get('_FillValue', variable.attrs.get('_FillValue', np.nan))
+    fill_value = variable.encoding.get(
+        '_FillValue', variable.attrs.get('_FillValue', np.nan)
+    )
 
     copy_attrs = variable.attrs.copy()
     copy_encoding = variable.encoding.copy()
 
     if valid_min is not None and valid_max is not None:
-        variable = variable.where((variable >= valid_min) & (variable <= valid_max), other=fill_value)
+        variable = variable.where(
+            (variable >= valid_min) & (variable <= valid_max), other=fill_value
+        )
     elif valid_min is not None:
         variable = variable.where((variable >= valid_min), other=fill_value)
     else:
@@ -731,7 +735,7 @@ def apply_valid_range_mask(
 
     variable.attrs = copy_attrs
     variable.encoding = copy_encoding
-    
+
     variable.rio.write_nodata(fill_value, encoded=True, inplace=True)
     return variable
 
