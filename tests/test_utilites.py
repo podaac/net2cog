@@ -17,6 +17,7 @@ from net2cog.utilities import (
     reorder_dimensions,
     is_valid_spatial_dimensions,
     get_dim_names_from_cf_standard_name_units,
+    get_default_fill_for_data_type,
     get_value_error_handler,
     apply_fillvalue_to_missing_value,
     get_fillvalue_and_missing_value,
@@ -1001,14 +1002,14 @@ def test_apply_valid_range_mask_no_attributes_returns_unchanged():
 
 
 def test_apply_valid_range_mask_valid_range_in_attrs():
-    """Values outside valid_range attr are masked to NaN."""
+    """Values outside valid_range attr are masked to float32=-9999."""
     da = _make_da([[1.0, -9999.0], [-9998.999, 5.0]], np.float32,
                   attrs={'valid_range': np.array([-9998.0, 9999.0], dtype=np.float32)})
     result = apply_valid_range_mask(da)
     assert result.values[0, 0] == pytest.approx(1.0)
     assert result.values[1, 1] == pytest.approx(5.0)
-    assert np.isnan(result.values[0, 1])   # -9999.0 < valid_min
-    assert np.isnan(result.values[1, 0])   # -9998.999 < valid_min
+    assert np.float32(result.values[0, 1])   # -9999.0 < valid_min
+    assert np.float32(result.values[1, 0])   # -9998.999 < valid_min
 
 
 def test_apply_valid_range_mask_valid_range_in_encoding():
@@ -1018,8 +1019,9 @@ def test_apply_valid_range_mask_valid_range_in_encoding():
     result = apply_valid_range_mask(da)
     assert result.values[0, 0] == pytest.approx(0.0)
     assert result.values[1, 1] == pytest.approx(100.0)
-    assert np.isnan(result.values[0, 1])   # 200.0 > valid_max
-    assert np.isnan(result.values[1, 0])   # -1.0 < valid_min
+    assert np.float32(result.values[0, 1])   # 200.0 > valid_max
+    assert np.float32(result.values[1, 0])   # -1.0 < valid_min
+    assert result.encoding.get('_FillValue') == -9999.0
 
 
 def test_apply_valid_range_mask_valid_min_only():
@@ -1027,7 +1029,7 @@ def test_apply_valid_range_mask_valid_min_only():
     da = _make_da([[-1.0, 0.0], [5.0, 10.0]], np.float64,
                   attrs={'valid_min': 0.0})
     result = apply_valid_range_mask(da)
-    assert np.isnan(result.values[0, 0])   # -1.0 < valid_min
+    assert np.float64(result.values[0, 0])   # -1.0 < valid_min
     assert result.values[0, 1] == pytest.approx(0.0)
     assert result.values[1, 0] == pytest.approx(5.0)
     assert result.values[1, 1] == pytest.approx(10.0)
@@ -1041,7 +1043,7 @@ def test_apply_valid_range_mask_valid_max_only():
     assert result.values[0, 0] == pytest.approx(0.0)
     assert result.values[0, 1] == pytest.approx(50.0)
     assert result.values[1, 0] == pytest.approx(100.0)
-    assert np.isnan(result.values[1, 1])   # 101.0 > valid_max
+    assert np.float64(result.values[1, 1])   # 101.0 > valid_max
 
 
 def test_apply_valid_range_mask_valid_min_and_max_without_valid_range():
@@ -1049,10 +1051,10 @@ def test_apply_valid_range_mask_valid_min_and_max_without_valid_range():
     da = _make_da([[-1.0, 5.0], [50.0, 101.0]], np.float64,
                   attrs={'valid_min': 0.0, 'valid_max': 100.0})
     result = apply_valid_range_mask(da)
-    assert np.isnan(result.values[0, 0])   # -1.0 < valid_min
+    assert np.float64(result.values[0, 0])   # -1.0 < valid_min
     assert result.values[0, 1] == pytest.approx(5.0)
     assert result.values[1, 0] == pytest.approx(50.0)
-    assert np.isnan(result.values[1, 1])   # 101.0 > valid_max
+    assert np.float64(result.values[1, 1])   # 101.0 > valid_max
 
 
 def test_apply_valid_range_mask_valid_range_takes_precedence():
@@ -1064,10 +1066,10 @@ def test_apply_valid_range_mask_valid_range_takes_precedence():
                       'valid_max': 200.0, # should be ignored
                   })
     result = apply_valid_range_mask(da)
-    assert np.isnan(result.values[0, 0])   # 5.0 < valid_range[0]
+    assert np.float64(result.values[0, 0])   # 5.0 < valid_range[0]
     assert result.values[0, 1] == pytest.approx(50.0)
     assert result.values[1, 0] == pytest.approx(85.0)
-    assert np.isnan(result.values[1, 1])   # 105.0 > valid_range[1]
+    assert np.float64(result.values[1, 1])   # 105.0 > valid_range[1]
 
 
 def test_apply_valid_range_mask_integer_dtype():
@@ -1075,10 +1077,10 @@ def test_apply_valid_range_mask_integer_dtype():
     da = _make_da([[-1, 0], [100, 101]], np.int16,
                   attrs={'valid_range': np.array([0, 100])})
     result = apply_valid_range_mask(da)
-    assert np.isnan(result.values[0, 0])
+    assert np.int16(result.values[0, 0])
     assert result.values[0, 1] == pytest.approx(0.0)
     assert result.values[1, 0] == pytest.approx(100.0)
-    assert np.isnan(result.values[1, 1])
+    assert np.int16(result.values[1, 1])
 
 
 def test_apply_valid_range_mask_boundary_values_are_valid():
@@ -1122,3 +1124,19 @@ def test_apply_valid_range_mask_datatree_returned_unchanged():
     )
     result = apply_valid_range_mask(dt)
     assert result is dt
+
+@pytest.mark.parametrize(
+    "data_type, expected_fill",
+        [
+            ("float64", -9999.0),
+            ("uint8", 254),
+            (None, -9999.0),
+            ("random_type_string", -9999.0),
+        ],
+    )
+def test_get_default_fill_for_data_type(data_type, expected_fill):
+    """ Ensure that the correct default fill value is retrieved based on
+        the `numpy.dtype.name` supplied to the function. If there is an
+        unrecognised input type, then -9999.0 should be returned.
+    """
+    assert get_default_fill_for_data_type(data_type) == expected_fill

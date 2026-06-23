@@ -8,6 +8,7 @@ Utility functions for use within the net2cog service.
 
 from logging import Logger
 from collections.abc import Callable
+from typing import Union, Any
 import h5py
 import xarray as xr
 import numpy as np
@@ -672,6 +673,10 @@ def apply_valid_range_mask(
     attributes when both are present. Attributes are searched in ``encoding``
     first, then in ``attrs``.
 
+    If out-of-range values are detected, they are overwritten with the variable's
+    explicit ``_FillValue``. If no explicit fill value is found, a default fallback
+    value matching the variable's unique data type is used.
+
     Non-DataArray inputs (e.g. a DataTree node) are returned unchanged.
 
     Parameters
@@ -706,19 +711,15 @@ def apply_valid_range_mask(
         valid_min = valid_range[0]
         valid_max = valid_range[1]
     else:
-        valid_min = variable.encoding.get('valid_min')
-        if valid_min is None:
-            valid_min = variable.attrs.get('valid_min')
-
-        valid_max = variable.encoding.get('valid_max')
-        if valid_max is None:
-            valid_max = variable.attrs.get('valid_max')
+        valid_min = variable.encoding.get('valid_min', variable.attrs.get('valid_min'))
+        valid_max = variable.encoding.get('valid_max', variable.attrs.get('valid_max'))
 
     if valid_min is None and valid_max is None:
         return variable
 
+    default_fill_value = get_default_fill_for_data_type(variable.dtype.name)
     fill_value = variable.encoding.get(
-        '_FillValue', variable.attrs.get('_FillValue', np.nan)
+        '_FillValue', variable.attrs.get('_FillValue', default_fill_value)
     )
 
     copy_attrs = variable.attrs.copy()
@@ -784,3 +785,31 @@ def has_object_dtype_variables(filepath: str) -> bool:
 
     with h5py.File(filepath, 'r') as f:
         return _check_group(f)
+
+
+def get_default_fill_for_data_type(variable_type: Union[str, None]) -> Any:
+    """ Retrieve a default value for filling as defined in the
+        DEFAULT_FILL_VALUES dictionary. This will only be used if there is no
+        _FillValue (HDF-5/NetCDF-4) or NoData (GeoTIFF) in-file metadata, no
+        configuration file setting for fill value, or no user-supplied default
+        fill value (SDPS implementation only).
+
+        If the type is not recognised, the returned default value will be
+        -9999.0
+
+    """
+    default_fill_values = {
+        'float16': -9999.0,
+        'float32': -9999.0,
+        'float64': -9999.0,
+        'float128': -9999.0,
+        'int8': 127,
+        'int16': 32767,
+        'int32': 2147483647,
+        'str32': '',
+        'uint8': 254,
+        'uint16': 65534,
+        'uint32': 4294967294,
+        'uint64': 18446744073709551614
+    }
+    return default_fill_values.get(variable_type, -9999.0)
