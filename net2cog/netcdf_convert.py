@@ -491,7 +491,7 @@ def netcdf_converter(
         chunks='auto' if use_chunks else None,
         engine=nc_engine,
         decode_coords=False,
-        decode_times=xr.coders.CFDatetimeCoder(use_cftime=False),
+        decode_times=False,
         decode_timedelta=False,
         concat_characters=True,
     )
