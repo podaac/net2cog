@@ -45,6 +45,17 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         # Create temp directory
         self.job_data_dir = tempfile.mkdtemp(prefix=message.requestId, dir=self.data_dir)
 
+    def invoke(self):
+        if not self.catalog:
+            raise RuntimeError("Invoking net2cog without a STAC catalog is not supported")
+
+        item_links = self.catalog.get_links(rel='item')
+        variable = item_links[0].extra_fields.get('harmony:variable') if item_links else None
+        if variable is not None:
+            self.logger.info (f'Variable passed by harmony:variable in stac catalog: {variable}')
+        self._harmony_catalog_variable = variable
+        return super().invoke()
+
     def process_item(self, item: pystac.Item, source: Source) -> pystac.Item:
         """
         Performs net2cog on input STAC Item's data, returning
@@ -83,6 +94,9 @@ class NetcdfConverterService(BaseHarmonyAdapter):
             if var_list:
                 var_list = list(map(lambda var: var.name, var_list))
                 self.logger.info('Processing variables %s', var_list)
+            elif self._harmony_catalog_variable is not None:
+                var_list = [self._harmony_catalog_variable]
+                self.logger.info(f'Processing harmony:variable from catalog: {var_list}')
             else:
                 self.logger.info('Processing all variables.')
 
