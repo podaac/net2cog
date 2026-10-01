@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Excess logging from cog_translate
 ### Fixed
+- [issues/101](https://github.com/podaac/net2cog/issues/101): Fix time decoding issue with some input granules.
 ### Security
 
 ## [1.3.0]
