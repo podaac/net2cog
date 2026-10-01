@@ -446,6 +446,53 @@ def test_reorder_3d_dimensions_exception(input_datatree_bad_3d_variables):
             reorder_dimensions(input_datatree_bad_3d_variables, variable_path)
 
 
+def test_reorder_4d_dimensions_trivial_time():
+    """Ensure a 4D variable with a trivial (length-1) time dimension, e.g.
+    (time=1, latitude, longitude, layer), is squeezed and reordered into a 3D
+    multi-banded (layer, latitude, longitude) layout. The trivial time
+    dimension is dropped and the remaining non-spatial dimension (layer)
+    becomes the band dimension.
+
+    """
+    datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "ozone_profile": (
+                    ["time", "latitude", "longitude", "layer"],
+                    np.ones((1, 4, 5, 3)),
+                ),
+            },
+        )
+    )
+
+    variable_data = reorder_dimensions(datatree, "ozone_profile")
+
+    assert variable_data.dims == ("layer", "latitude", "longitude")
+    assert variable_data.shape == (3, 4, 5)
+
+
+def test_reorder_4d_dimensions_trivial_time_and_layer():
+    """Ensure a 4D variable where both the time and layer dimensions are
+    trivial (length-1) is squeezed down to a 2D (latitude, longitude) layout.
+
+    """
+    datatree = xr.DataTree(
+        dataset=xr.Dataset(
+            data_vars={
+                "ozone_profile": (
+                    ["time", "latitude", "longitude", "layer"],
+                    np.ones((1, 4, 5, 1)),
+                ),
+            },
+        )
+    )
+
+    variable_data = reorder_dimensions(datatree, "ozone_profile")
+
+    assert variable_data.dims == ("latitude", "longitude")
+    assert variable_data.shape == (4, 5)
+
+
 @pytest.mark.parametrize(
     'dimensions',
     [['lat', 'lon'], ['latitude', 'longitude'], ['x', 'y'], ['x-dim', 'y-dim'],

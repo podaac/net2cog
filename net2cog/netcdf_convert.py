@@ -45,13 +45,6 @@ from net2cog.utilities import (
 EXCLUDE_VARS = ['lon', 'lat', 'longitude', 'latitude', 'time']
 
 
-def _rioxr_swapdims(netcdf_xarray):
-    netcdf_xarray.coords['y'] = ('lat', netcdf_xarray.lat)
-    netcdf_xarray.coords['x'] = ('lon', netcdf_xarray.lon)
-
-    return netcdf_xarray.swap_dims({'lat': 'y', 'lon': 'x'})
-
-
 # pylint: disable=R0914
 def _write_cogtiff(
     output_directory: str,
@@ -358,16 +351,17 @@ def process_dimension_error_exception(
     temp_file_name: str,
 ):
     """
-    Handles an InvalidDimensionOrder exception by attempting
-    to swap the dimensions of a NetCDF variable to match the expected
-    spatial layout for raster conversion.
+    Handles a DimensionError by reducing the variable to a layout rasterio
+    can write.
 
-    This function applies a dimension swap strategy using
-    `swap_dims` to correct issues where the variable's dimensions
-    are not in a valid order for rasterization
-    (e.g., time-first or non-spatial-first layouts). It then retries
-    writing the variable to a temporary GeoTIFF file. If the conversion
-    fails again, it logs the error and raises a `Net2CogError`.
+    Variables such as (time=1, latitude, longitude, layer) have more
+    dimensions than rioxarray supports directly. ``reorder_dimensions`` drops
+    any trivial (length-1) non-spatial dimensions like time and reorders the
+    remaining dimensions into (band, y, x) order so the extra dimension
+    becomes the bands of a multi-banded GeoTIFF. ``rename_dimensions`` then
+    renames the spatial dimensions to the 'x'/'y' names required by rasterio.
+    It then retries writing the variable to a temporary GeoTIFF file. If the
+    conversion fails again, it logs the error and raises a `Net2CogError`.
 
     Parameters
     ----------
@@ -382,8 +376,11 @@ def process_dimension_error_exception(
 
     """
     try:
-        nc_xarray_tmp = _rioxr_swapdims(nc_xarray)
-        nc_xarray_tmp[variable_path].rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
+        # reorder_dimensions squeezes trivial (length-1) non-spatial dims, e.g.
+        # time, and orders the remaining dims as (band, y, x).
+        variable_data = reorder_dimensions(nc_xarray, variable_path)
+        variable_data = rename_dimensions(variable_data)
+        variable_data.rio.to_raster(temp_file_name, BIGTIFF='IF_SAFER')
     except Exception as err:    # pylint: disable=broad-except
         logger.info('Variable %s cannot be converted to tif: %s',
                     variable_path, err)

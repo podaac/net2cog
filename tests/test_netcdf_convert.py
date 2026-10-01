@@ -625,26 +625,21 @@ def test_process_invalid_dimension_order_exception(
         )
 
 def test_process_dimension_error_exception_catch_exception(
-    input_datatree,
+    input_datatree_bad_3d_variables,
     logger,
     temp_dir
 ):
-    """Test that process_dimension_error_exception re-raises a Net2CogError
-    when fails to create a new DataArray with swapped dimensions.
+    """From issue/100: Test that process_dimension_error_exception
+    re-raises a Net2CogError when the variable cannot be reduced to
+    a supported 2D/3D layout.
 
     """
     test_file = pathlib.Path(temp_dir, 'output.tif')
 
-    expected_exception = (
-        "Variable group_five/variable_two cannot be converted to tif: "
-        "Variable 'y': Using a DataArray object to construct a variable "
-        "is ambiguous, please extract the data using the .data property."
-    )
-
-    with pytest.raises(Net2CogError, match=re.escape(expected_exception)):
+    with pytest.raises(Net2CogError, match="Only 2D and 3D data arrays supported"):
         process_dimension_error_exception(
-            input_datatree,
-            "group_five/variable_two",
+            input_datatree_bad_3d_variables,
+            "group_three/science_three",
             logger,
             str(test_file),
         )
