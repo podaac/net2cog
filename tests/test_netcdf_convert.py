@@ -529,6 +529,45 @@ def test_spl3ftp_e_v4_timedelta_valueerror_exception_using_CFDatetimeCoder_set_t
             logger
         )
 
+
+def test_non_standard_calendar_time_conversion(temp_dir, logger):
+    """Verify a granule whose time coordinate uses a non-standard calendar
+    (e.g. 'julian') can be opened and converted.
+
+    Because ``netcdf_converter`` opens files with ``decode_times=False``,
+    time values are never decoded into ``datetime64``, so a non-standard
+    calendar no longer raises the "unable to decode time units ... with
+    calendar 'julian'" ValueError that NumPy datetime decoding would trigger.
+
+    """
+    test_file = pathlib.Path(temp_dir, 'julian_calendar.nc')
+    dataset = xr.Dataset(
+        {'sst': (('time', 'lat', 'lon'), np.random.rand(1, 4, 5).astype('float32'))},
+        coords={
+            'lat': ('lat', np.linspace(-80, 80, 4).astype('float32')),
+            'lon': ('lon', np.linspace(-170, 170, 5).astype('float32')),
+            'time': ('time', np.array([0], dtype='int32')),
+        },
+    )
+    dataset['time'].attrs = {
+        'units': 'seconds since 1980-01-06 00:00:00 UTC',
+        'calendar': 'julian',
+    }
+    dataset.to_netcdf(test_file)
+
+    results = netcdf_converter(
+        test_file,
+        pathlib.Path(temp_dir),
+        ['sst'],
+        logger,
+    )
+
+    assert len(results) == 1, 'Incorrect number of output file names.'
+    assert pathlib.Path(results[0]).is_file(), 'No file created.'
+    assert basename(results[0]) == 'sst.tif', 'Incorrect output file name'
+    assert cog_validate(pathlib.Path(results[0]))[0]
+
+
 def test_process_value_error_exception_catch_exception(
     input_datatree,
     logger,
@@ -586,26 +625,21 @@ def test_process_invalid_dimension_order_exception(
         )
 
 def test_process_dimension_error_exception_catch_exception(
-    input_datatree,
+    input_datatree_bad_3d_variables,
     logger,
     temp_dir
 ):
-    """Test that process_dimension_error_exception re-raises a Net2CogError
-    when fails to create a new DataArray with swapped dimensions.
+    """From issue/100: Test that process_dimension_error_exception
+    re-raises a Net2CogError when the variable cannot be reduced to
+    a supported 2D/3D layout.
 
     """
     test_file = pathlib.Path(temp_dir, 'output.tif')
 
-    expected_exception = (
-        "Variable group_five/variable_two cannot be converted to tif: "
-        "Variable 'y': Using a DataArray object to construct a variable "
-        "is ambiguous, please extract the data using the .data property."
-    )
-
-    with pytest.raises(Net2CogError, match=re.escape(expected_exception)):
+    with pytest.raises(Net2CogError, match="Only 2D and 3D data arrays supported"):
         process_dimension_error_exception(
-            input_datatree,
-            "group_five/variable_two",
+            input_datatree_bad_3d_variables,
+            "group_three/science_three",
             logger,
             str(test_file),
         )

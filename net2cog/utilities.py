@@ -103,6 +103,16 @@ def reorder_dimensions(nc_xarray: xr.DataTree, variable_path: str) -> xr.DataArr
             f"variable.dims {variable.dims}",
         )
 
+    # issue/100: Drop any trivial (length-1) non-spatial dimensions, e.g.
+    # time dimension, so that only the band dimension remains alongside the
+    # spatial dimensions.
+    trivial_dims = [
+        dim for dim in variable.dims
+        if dim not in (x_dim, y_dim) and variable.sizes[dim] == 1
+    ]
+    if trivial_dims:
+        variable = variable.squeeze(trivial_dims)
+
     # Subtract sets to isolate and retrieve the 3rd or 4th dimensions
     z_dim = list(set(variable.dims) - {x_dim, y_dim})
     if len(z_dim) > 1:

@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Security
 
+## [1.4.0]
+### Added
+- [issues/100](https://github.com/podaac/net2cog/issues/100): Added support for 4D variables by squeezing length-1 dimensions like time.
+- Added a COG validation utility for checking compatibility with HyBIG
+### Changed
+- Minor changes and dependency updates
+### Deprecated
+### Removed
+- Excess logging from cog_translate
+### Fixed
+- [issues/101](https://github.com/podaac/net2cog/issues/101): Fix time decoding issue with some input granules.
+### Security
+
 ## [1.3.0]
 ### Added
 - [issue/87](https://github.com/podaac/net2cog/issues/86): Added support for Big TIFF outputs if the input raster is determined to be sufficiently large (>4.6 GB)
@@ -101,7 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Setup process for deploying the netcdf reformatter to SIT using Terraform deployment via Jenkins.  In order to accomplish this I setup unique terraform naming conventions for the netcdf converter while maintaining the same terraform config as l2ss.  Updated the jenkins logic to allow for SIT deployment testing.
 
 
-[Unreleased]: https://github.com/podaac/net2cog/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/podaac/net2cog/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/podaac/net2cog/compare/v1.4.0...HEAD
 [1.3.0]: https://github.com/podaac/net2cog/compare/v1.3.0...HEAD
 [1.2.0]: https://github.com/podaac/net2cog/compare/v1.2.0...HEAD
 [1.1.1]: https://github.com/podaac/net2cog/compare/v1.1.0...HEAD
