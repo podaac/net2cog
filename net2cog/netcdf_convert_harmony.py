@@ -44,15 +44,25 @@ class NetcdfConverterService(BaseHarmonyAdapter):
 
         # Create temp directory
         self.job_data_dir = tempfile.mkdtemp(prefix=message.requestId, dir=self.data_dir)
+        self._harmony_catalog_variable = None
 
     def invoke(self):
+        """Pre-process the catalog, then invoke the base adapter.
+
+        As part of the Harmony contract, the first item link in the input
+        catalog may contain the custom extra field ``harmony:variable``. If
+        found, net2cog only processes that single variable instead of all
+        variables in the file (unless the Harmony message itself specifies
+        variables). Only the first item link of the top-level catalog is read.
+
+        """
         if not self.catalog:
             raise RuntimeError("Invoking net2cog without a STAC catalog is not supported")
 
         item_links = self.catalog.get_links(rel='item')
         variable = item_links[0].extra_fields.get('harmony:variable') if item_links else None
         if variable is not None:
-            self.logger.info (f'Variable passed by harmony:variable in stac catalog: {variable}')
+            self.logger.info('Variable passed by harmony:variable in stac catalog: %s', variable)
         self._harmony_catalog_variable = variable
         return super().invoke()
 
@@ -96,7 +106,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
                 self.logger.info('Processing variables %s', var_list)
             elif self._harmony_catalog_variable is not None:
                 var_list = [self._harmony_catalog_variable]
-                self.logger.info(f'Processing harmony:variable from catalog: {var_list}')
+                self.logger.info('Processing harmony:variable from catalog: %s', var_list)
             else:
                 self.logger.info('Processing all variables.')
 
