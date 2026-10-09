@@ -64,7 +64,7 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         variable = item_links[0].extra_fields.get('harmony:variable') if item_links else None
         if variable is not None:
             self.logger.info('Variable passed by harmony:variable in stac catalog: %s', variable)
-        self._harmony_catalog_variable = variable
+            self._harmony_catalog_variable = variable
         return super().invoke()
 
     def process_item(self, item: pystac.Item, source: Source) -> pystac.Item:
