@@ -52,8 +52,9 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         As part of the Harmony contract, the first item link in the input
         catalog may contain the custom extra field ``harmony:variable``. If
         found, net2cog only processes that single variable instead of all
-        variables in the file (unless the Harmony message itself specifies
-        variables). Only the first item link of the top-level catalog is read.
+        variables in the file (unless somehow the Harmony message itself also
+        specifies variables). Only the first item link of the top-level catalog
+        is read.
 
         """
         if not self.catalog:
