@@ -66,7 +66,6 @@ class NetcdfConverterService(BaseHarmonyAdapter):
         try:
             self.logger.info('Input item: %s', json.dumps(item.to_dict()))
             self.logger.info('Input source: %s', source)
-            self.logger.info('Input Item.properties[\'harmony:variable\']: %s' , item.properties.get('harmony:variable'))
             # Get the data file
             asset = next(v for k, v in item.assets.items() if 'data' in (v.roles or []))
             self.logger.info('Downloading %s to %s', asset.href, output_dir)
