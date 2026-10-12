@@ -10,11 +10,8 @@ import os
 import sys
 from unittest.mock import patch
 
-import pystac
 import pytest
-from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.exceptions import HarmonyException
-from harmony_service_lib.message import Message
 
 import net2cog.netcdf_convert_harmony
 
@@ -126,16 +123,15 @@ def _set_message_variables(message_file, variables):
         json.dump(message_json, file_handler, indent=2)
 
 
-def _set_catalog_variable(catalog_file, variable):
-    """Add a ``harmony:variable`` field to the item link of a STAC catalog file."""
-    with open(catalog_file, 'r', encoding='utf-8') as file_handler:
-        catalog_json = json.load(file_handler)
+def _set_item_variable(item_file, variable):
+    """Add a ``harmony:variable`` property to a STAC item file."""
+    with open(item_file, 'r', encoding='utf-8') as file_handler:
+        item_json = json.load(file_handler)
 
-    the_link = next(link for link in catalog_json['links'] if link['rel'] == 'item')
-    the_link['harmony:variable'] = variable
+    item_json['properties']['harmony:variable'] = variable
 
-    with open(catalog_file, 'w', encoding='utf-8') as file_handler:
-        json.dump(catalog_json, file_handler, indent=2)
+    with open(item_file, 'w', encoding='utf-8') as file_handler:
+        json.dump(item_json, file_handler, indent=2)
 
 
 def _invoke_service(message_file, catalog_file, metadata_dir):
@@ -158,35 +154,35 @@ def _invoke_service(message_file, catalog_file, metadata_dir):
     return mock_netcdf_converter
 
 
-def test_service_catalog_variable(
-    mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac
+def test_service_item_variable(
+    mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac, smap_rss_l3_sss_item
 ):
     """When the message has no variables, the ``harmony:variable`` from the
-    input catalog is the only variable processed.
+    input STAC item properties is the only variable processed.
 
     """
     _set_message_variables(smap_rss_l3_sss_operation_message, [])
-    _set_catalog_variable(smap_rss_l3_sss_stac, 'harmony_catalog_variable')
+    _set_item_variable(smap_rss_l3_sss_item, 'harmony_item_variable')
 
     mock_converter = _invoke_service(
         smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac, temp_dir
     )
     # var_list is the 3rd argument to netcdf_converter.
-    assert mock_converter.call_args.args[2] == ['harmony_catalog_variable']
+    assert mock_converter.call_args.args[2] == ['harmony_item_variable']
 
 
-def test_service_message_variables_override_catalog_variable(
-        mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac):
+def test_service_message_variables_override_item_variable(
+        mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac, smap_rss_l3_sss_item):
     """Variables in the Harmony message take precedence over the
-    ``harmony:variable`` in the input catalog.
+    ``harmony:variable`` in the input STAC item properties.
 
     This shouldn't happen ever, but if it does, we want to use the variable
-    from the message, not the one in the catalog link.
+    from the message, not the one in the item properties.
 
     """
     _set_message_variables(smap_rss_l3_sss_operation_message,
                            [{'name': 'message_variable'}, {'name': 'another_var'}])
-    _set_catalog_variable(smap_rss_l3_sss_stac, 'harmony_catalog_variable')
+    _set_item_variable(smap_rss_l3_sss_item, 'harmony_item_variable')
 
     mock_converter = _invoke_service(
         smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac, temp_dir
@@ -195,7 +191,7 @@ def test_service_message_variables_override_catalog_variable(
     assert mock_converter.call_args.args[2] == ['message_variable', 'another_var']
 
 
-def test_service_no_catalog_variable(
+def test_service_no_item_variable(
     mock_environ, temp_dir, smap_rss_l3_sss_operation_message, smap_rss_l3_sss_stac
 ):
     """Without message variables or a ``harmony:variable``, all variables are
@@ -209,23 +205,3 @@ def test_service_no_catalog_variable(
     )
 
     assert mock_converter.call_args.args[2] == []
-
-
-def test_invoke_no_item_links(mock_environ, smap_rss_l3_sss_operation_message):
-    """invoke() leaves the catalog variable unset when there are no item links*.
-
-    *This may never happen.
-    """
-    with open(smap_rss_l3_sss_operation_message, 'r', encoding='utf-8') as file_handler:
-        message = Message(json.load(file_handler))
-
-
-    with patch.object(BaseHarmonyAdapter, 'invoke') as mock_base_invoke:
-
-        adapter = net2cog.netcdf_convert_harmony.NetcdfConverterService(
-            message, catalog=pystac.Catalog('test', 'test no links')
-        )
-        adapter.invoke()
-
-    mock_base_invoke.assert_called_once() # netcdfConverterService.invoke made it to the super().invoke().
-    assert adapter._harmony_catalog_variable is None  # pylint: disable=protected-access

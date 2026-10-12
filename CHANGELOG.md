@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- DAS-2490: Process only the variable named by the `harmony:variable` field on the input STAC catalog's item link, when the Harmony message specifies no variables.
+- DAS-2490: Process only the variable named by the `harmony:variable` property on the input STAC item, when the Harmony message specifies no variables.
 ### Changed
 ### Deprecated
 ### Removed
