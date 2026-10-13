@@ -137,7 +137,9 @@ def _set_item_variable(item_file, variable):
 def _invoke_service(message_file, catalog_file, metadata_dir):
     """Run the service via the CLI, spying on the netcdf_converter call.
 
-    Elaborate setup to spy on the 3rd argument, var_list.
+    This is elaborate setup to spy on the 3rd argument of netcdf_converter(),
+    the var_list.
+
     """
     test_args = [
         net2cog.netcdf_convert_harmony.__file__,
