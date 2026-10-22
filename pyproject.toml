@@ -29,6 +29,7 @@ dask = "^2026.3.0"
 h5netcdf = "^1.8.1"
 h5py = "^3.16.0"
 urllib3 = ">=2.7.0"
+certifi = ">=2026.10.19"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
