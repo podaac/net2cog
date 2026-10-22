@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "net2cog"
-version = "1.4.0"
+version = "1.4.1rc2"
 description = "NetCDF to COG Conversion Service"
 authors = ["podaac <podaac@jpl.nasa.gov>"]
 license = "Apache-2.0"
@@ -29,6 +29,7 @@ dask = "^2026.3.0"
 h5netcdf = "^1.8.1"
 h5py = "^3.16.0"
 urllib3 = ">=2.7.0"
+certifi = ">=2026.10.19"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
