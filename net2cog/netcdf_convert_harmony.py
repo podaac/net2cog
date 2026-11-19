@@ -80,12 +80,12 @@ class NetcdfConverterService(BaseHarmonyAdapter):
             # Determine variables that need processing
             var_list = source.process('variables')
 
-            if var_list:
-                var_list = list(map(lambda var: var.name, var_list))
-                self.logger.info('Processing variables %s', var_list)
-            elif item.properties.get('harmony:variable'):
+            if item.properties.get('harmony:variable'):
                 var_list = [item.properties['harmony:variable']]
                 self.logger.info('Processing harmony:variable from Item.properties: %s', var_list)
+            elif var_list:
+                var_list = [var.name for var in var_list]
+                self.logger.info('Processing variables %s', var_list)
             else:
                 self.logger.info('Processing all variables.')
 
