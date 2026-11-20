@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
-- [DAS-2560](https://bugs.earthdata.nasa.gov/browse/DAS-2560): Order of preference in processing swapped. Now process only the variable named by the `harmony:variable` propery on the input STAC item, even if the Harmony message contains variables.
+- [DAS-2560](https://bugs.earthdata.nasa.gov/browse/DAS-2560): Order of precedence swapped for selecting variables to process. This change will now process only the variable named by the `harmony:variable` propery on the input STAC item, even if the Harmony message contains variables.
 ### Deprecated
 ### Removed
 ### Fixed
